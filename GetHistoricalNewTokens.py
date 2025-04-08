@@ -25,7 +25,7 @@ df_add = pd.DataFrame(data['result'])
 list_of_dfs.append(df_add)
 cursorUsed = data['cursor']
 
-for i in range(0,20):
+for i in range(0,25):
     url = f"https://solana-gateway.moralis.io/token/mainnet/exchange/pumpfun/new?limit={config.NewTokenCount}&cursor={cursorUsed}"
     response = requests.request("GET", url, headers=headers)
     data = json.loads(response.text)
@@ -37,3 +37,8 @@ final_df = pd.concat(list_of_dfs)
 final_df = final_df.drop_duplicates()
 final_df = final_df[~final_df['tokenAddress'].isna()]
 final_df.to_csv('./IO_Files/TokensDB.csv', index=False)
+
+final_df['fullyDilutedValuation'] = final_df['fullyDilutedValuation'].astype('float')
+
+mask = ((final_df['fullyDilutedValuation'] >= 15000) & (final_df['fullyDilutedValuation'] <= 49000))
+mkt_cap_df = final_df.loc[mask]

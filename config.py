@@ -9,3 +9,4 @@ headers = {
 
 # Current API Max is 100
 NewTokenCount = 100
+bitquery_url = "https://streaming.bitquery.io/eap"
