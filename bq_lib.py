@@ -34,8 +34,12 @@ def get_bitquery(query_str: str, **query_variables) -> json:
 
 def get_creation_time_dev(contract_address: str) -> tuple:
     data = get_bitquery(bq.creation_date_creator_query, tokenAddress=contract_address)
-    dev_wallet = data['data']['Solana']['Instructions'][0]['Transaction']['Signer']
-    create_time = data['data']['Solana']['Instructions'][0]['Block']['Time']
+    try:
+        dev_wallet = data['data']['Solana']['Instructions'][0]['Transaction']['Signer']
+        create_time = data['data']['Solana']['Instructions'][0]['Block']['Time']
+    except:
+        print(f"Error fetching data for {contract_address}")
+        return None, None
     return (dev_wallet, create_time)
 
 
@@ -69,40 +73,46 @@ def get_top_10_holders_ownership(contract_address: str) -> float:
 
 def dev_owns(contract_address: str, dev_wallet: str):
     data = get_bitquery(bq.dev_sold_query, token=contract_address, dev=dev_wallet)
-    dev_owns_percent = float(data['data']['Solana']['BalanceUpdates'][0]['BalanceUpdate']['balance'])/10000000
+    if len(data['data']['Solana']['BalanceUpdates']) == 0:
+        dev_owns_percent = 0.00
+    else:
+        dev_owns_percent = float(data['data']['Solana']['BalanceUpdates'][0]['BalanceUpdate']['balance'])/10000000
     return dev_owns_percent
 
 
 def snipers_still_own(contract_address: str):
     data_first_100 = get_bitquery(bq.first_100_buyers, tokenAddress=contract_address)
     first_100_wallet_address_list = list()
-    for wallet in range(0,100):
+    for wallet in range(0,len(data_first_100['data']['Solana']['DEXTrades'])):
         wallet_address = data_first_100['data']['Solana']['DEXTrades'][wallet]['Trade']['Buy']['Account']['Token']['Owner']
         first_100_wallet_address_list.append(wallet_address)
 
     data = get_bitquery(bq.check_snipers, tokenAddress=contract_address, ownerAddresses=first_100_wallet_address_list)
     sniper_still_own = 0
-    for wallet in range(0,100):
+    for wallet in range(0,len(data['data']['Solana']['BalanceUpdates'])):
         if float(data['data']['Solana']['BalanceUpdates'][wallet]['BalanceUpdate']['balance']) > 0.01:
             sniper_still_own += 1
     return sniper_still_own
 
 
 def check_snipers(contract_address: str):
+    """not ready yet"""
     snipers_still_hold = snipers_still_own(contract_address)
     # Snipers sold part
     # Snipers bought more
     # Calc snipers ok or bad score
     # Return Score
+    return snipers_still_hold
 
 
-### Clean Executions
-dev_wallet, creation_time = (get_creation_time_dev("21AzFn8k4UDj2pfUwVSXton79XQK5HqaHPqzzHqJpump"))
-age = get_age(creation_time)
+####
+# Examples
+#####
+# dev_wallet, creation_time = get_creation_time_dev("9zo35yzD6ApMz2ebsKMMR1ck368p23bKGZdrAqH5pump")
+# age = get_age(creation_time)
 
-top_10_own_float = get_top_10_holders_ownership("21AzFn8k4UDj2pfUwVSXton79XQK5HqaHPqzzHqJpump")
+# top_10_own_float = get_top_10_holders_ownership("9zo35yzD6ApMz2ebsKMMR1ck368p23bKGZdrAqH5pump")
 
-dev_percent_owned = dev_owns("21AzFn8k4UDj2pfUwVSXton79XQK5HqaHPqzzHqJpump", dev_wallet)
+# dev_percent_owned = dev_owns("21AzFn8k4UDj2pfUwVSXton79XQK5HqaHPqzzHqJpump", dev_wallet)
 
-sniper_check = snipers_still_own("VbQZeascmDvT9cUeZcxmV6XcFL3bFWXFfvUhCyYpump")
-
+# sniper_check = snipers_still_own("VbQZeascmDvT9cUeZcxmV6XcFL3bFWXFfvUhCyYpump")

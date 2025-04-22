@@ -1,6 +1,11 @@
 import datetime
+from datetime import datetime, timedelta
 from dateutil import parser
+import requests
 import pytz
+import pandas as pd
+import bq_lib
+import config
 
 def calculate_time_difference(timestamp_str):
     """
@@ -28,3 +33,62 @@ def calculate_time_difference(timestamp_str):
     seconds = int(total_seconds % 60)
     
     return hours, minutes, seconds
+
+
+def filter_only_last_two_hours(df: pd.DataFrame) -> pd.DataFrame:
+    # Convert 'createdAt' column to datetime format
+    df['createdAt'] = pd.to_datetime(df['createdAt'])
+
+    # Get the current time from the latest entry
+    latest_time = df['createdAt'].max()
+
+    # Calculate the cutoff time (2 hours before the latest time)
+    cutoff_time = latest_time - timedelta(hours=2)
+
+    # Filter the DataFrame to include only rows from the last 2 hours
+    return df[df['createdAt'] >= cutoff_time]
+
+
+def list_rug_checked_tokens(df: pd.DataFrame) -> list:
+    rugchecked_tokens = list()
+    for tokenAddress in df['tokenAddress'].unique():
+        try:
+            dev_wallet, creation_time = (bq_lib.get_creation_time_dev(tokenAddress))
+        except:
+            print(f"Error getting creation time for token {tokenAddress}")
+            continue
+        if dev_wallet is None:
+            continue
+        dev_percent_owned = bq_lib.dev_owns(tokenAddress, dev_wallet)
+        top_10_own_float = bq_lib.get_top_10_holders_ownership(tokenAddress)
+        sniper_check = bq_lib.snipers_still_own(tokenAddress)
+        if dev_percent_owned <= 0.05 and top_10_own_float <= 33.00 and sniper_check <= 10:
+            rugchecked_tokens.append(tokenAddress)
+    return rugchecked_tokens
+
+
+def send_discord_message(message_to_send):
+    """
+    Send a message to a Discord channel using a webhook.
+    
+    Args:
+        message_to_send (str): The message to send.
+    """
+    # Define the webhook URL
+    webhook_url = config.discord_webhook_url
+
+    message = message_to_send
+
+    data = {
+        "content": message
+    }
+
+    # Send the request
+    response = requests.post(webhook_url, json=data)
+
+    if response.status_code == 204:
+        print("Message sent successfully!")
+    else:
+        print(f"Failed to send message: {response.status_code}")
+
+
