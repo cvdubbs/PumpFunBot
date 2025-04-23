@@ -11,7 +11,7 @@ load_dotenv()
 
 import requests
 
-def get_hist_new_tokens():
+def get_hist_new_tokens(loops = 50):
   headers = {
     "Accept": "application/json",
     "X-API-Key": os.getenv("MORALIS_API_KEY")
@@ -25,7 +25,7 @@ def get_hist_new_tokens():
   list_of_dfs.append(df_add)
   cursorUsed = data['cursor']
 
-  for i in range(0,50):
+  for i in range(0,loops):
       url = f"{config.moralis_url}&cursor={cursorUsed}"
       response = requests.request("GET", url, headers=headers)
       data = json.loads(response.text)
