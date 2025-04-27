@@ -108,7 +108,7 @@ def check_snipers(contract_address: str):
 ####
 # Examples
 #####
-# dev_wallet, creation_time = get_creation_time_dev("9zo35yzD6ApMz2ebsKMMR1ck368p23bKGZdrAqH5pump")
+# dev_wallet, creation_time = get_creation_time_dev("SqGCQ5R8F21M7wWMQYbpuQKdxP72JHrFWV3UDBbpump")
 # age = get_age(creation_time)
 
 # top_10_own_float = get_top_10_holders_ownership("9zo35yzD6ApMz2ebsKMMR1ck368p23bKGZdrAqH5pump")
