@@ -7,6 +7,7 @@ import pandas as pd
 import bq_lib
 import moralis_lib
 import config
+import utils
 
 def calculate_time_difference(timestamp_str):
     """
@@ -56,6 +57,7 @@ def list_rug_checked_tokens(df: pd.DataFrame) -> list:
         try:
             holder_count, transfer_count, airdrop_count = moralis_lib.get_token_holder_counts(tokenAddress)
             if airdrop_count >2:
+                append_to_file("./data/reject_why.txt", [f"{tokenAddress} - Airdrop count {airdrop_count}"])
                 continue
         except:
             print(f"Error getting Moralis holder counts token {tokenAddress}")
@@ -63,23 +65,27 @@ def list_rug_checked_tokens(df: pd.DataFrame) -> list:
         try:
             dev_wallet, creation_time = (bq_lib.get_creation_time_dev(tokenAddress))
         except:
-            print(f"Error getting creation time for token {tokenAddress}")
+            print(f"Error getting dev wallet for token {tokenAddress}")
             continue
         if dev_wallet is None:
             continue
         dev_percent_owned = bq_lib.dev_owns(tokenAddress, dev_wallet)
         if dev_percent_owned > 0.05:
+            append_to_file("./data/reject_why.txt", [f"{tokenAddress} - dev owns {dev_percent_owned}%"])
             continue
         top_10_own_float = bq_lib.get_top_10_holders_ownership(tokenAddress)
         if top_10_own_float > 33.00:
+            append_to_file("./data/reject_why.txt", [f"{tokenAddress} - top 10 own {top_10_own_float}%"])
             continue
         sniper_check = bq_lib.snipers_still_own(tokenAddress)
-        if dev_percent_owned <= 0.05 and top_10_own_float <= 33.00 and sniper_check <= 25:
+        if sniper_check > 30:
+            append_to_file("./data/reject_why.txt", [f"{tokenAddress} - snipers still own {sniper_check}"])
+        if dev_percent_owned <= 0.05 and top_10_own_float <= 33.00 and sniper_check <= 30:
             rugchecked_tokens.append(tokenAddress)
     return rugchecked_tokens
 
 
-def send_discord_message(message_to_send):
+def send_discord_message(message_to_send, image_url = None):
     """
     Send a message to a Discord channel using a webhook.
     
@@ -91,9 +97,21 @@ def send_discord_message(message_to_send):
 
     message = message_to_send
 
-    data = {
-        "content": message
-    }
+    if image_url is None:
+         data = {
+            "content": message
+        }
+    else:
+        data = {
+            "content": message,
+            "embeds": [
+                {
+                    "image": {
+                        "url": image_url
+                    }
+                }
+            ]
+        }
 
     # Send the request
     response = requests.post(webhook_url, json=data)
@@ -104,3 +122,7 @@ def send_discord_message(message_to_send):
         print(f"Failed to send message: {response.status_code}")
 
 
+def append_to_file(file_path: str, data: list):
+    with open(file_path, "a") as file:
+            for item in data:
+                file.write(item + "\n")

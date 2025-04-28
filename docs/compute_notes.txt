@@ -1,0 +1,5 @@
+Compute from Moralis
+- Get New Tokens - 100
+- Get Bonding Tokens - 300
+- Get Hist New Tokens - 2600 for 50 loops/2hrs
+

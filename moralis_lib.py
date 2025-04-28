@@ -13,14 +13,9 @@ load_dotenv()
 import requests
 
 def get_hist_new_tokens(loops = 50):
-  headers = {
-    "Accept": "application/json",
-    "X-API-Key": os.getenv("MORALIS_API_KEY")
-  }
-
   list_of_dfs = list()
 
-  response = requests.request("GET", config.moralis_url, headers=headers)
+  response = requests.request("GET", config.moralis_url, headers=config.moralis_headers)
   data = json.loads(response.text)
   df_add = pd.DataFrame(data['result'])
   list_of_dfs.append(df_add)
@@ -28,7 +23,7 @@ def get_hist_new_tokens(loops = 50):
 
   for i in range(0,loops):
       url = f"{config.moralis_url}&cursor={cursorUsed}"
-      response = requests.request("GET", url, headers=headers)
+      response = requests.request("GET", url, headers=config.moralis_headers)
       data = json.loads(response.text)
       df_add = pd.DataFrame(data['result'])
       list_of_dfs.append(df_add)
@@ -44,14 +39,9 @@ def get_hist_new_tokens(loops = 50):
 
 
 def get_bonding_tokens() -> pd.DataFrame:
-  headers = {
-    "Accept": "application/json",
-    "X-API-Key": os.getenv("MORALIS_API_KEY")
-  }
-
   list_of_dfs = list()
 
-  response = requests.request("GET", config.moralis_bonding_url, headers=headers)
+  response = requests.request("GET", config.moralis_bonding_url, headers=config.moralis_headers)
   data = json.loads(response.text)
   df_add = pd.DataFrame(data['result'])
   list_of_dfs.append(df_add)
@@ -59,7 +49,7 @@ def get_bonding_tokens() -> pd.DataFrame:
   try:
     for i in range(0,5):
         url = f"https://solana-gateway.moralis.io/token/mainnet/exchange/pumpfun/bonding?limit={config.NewTokenCount}&cursor={cursorUsed}"
-        response = requests.request("GET", url, headers=headers)
+        response = requests.request("GET", url, headers=config.moralis_headers)
         data = json.loads(response.text)
         df_add = pd.DataFrame(data['result'])
         list_of_dfs.append(df_add)
@@ -76,16 +66,11 @@ def get_bonding_tokens() -> pd.DataFrame:
 
 
 def get_new_tokens():
-    headers = {
-        "Accept": "application/json",
-        "X-API-Key": os.getenv("MORALIS_API_KEY")
-    }
-
     list_of_dfs = list()
 
     try:
         # Initial request
-        response = requests.request("GET", config.moralis_url, headers=headers)
+        response = requests.request("GET", config.moralis_url, headers=config.moralis_headers)
         data = json.loads(response.text)
         df_add = pd.DataFrame(data['result'])
         list_of_dfs.append(df_add)
@@ -95,7 +80,7 @@ def get_new_tokens():
         for i in range(0, 3):
             try:
                 url = f"{config.moralis_url}&cursor={cursorUsed}"
-                response = requests.request("GET", url, headers=headers)
+                response = requests.request("GET", url, headers=config.moralis_headers)
                 data = json.loads(response.text)
                 df_add = pd.DataFrame(data['result'])
                 list_of_dfs.append(df_add)
@@ -128,14 +113,9 @@ def get_new_tokens():
 
 #### OLD VERSION OF FUNCTION
 # def get_new_tokens():
-#   headers = {
-#     "Accept": "application/json",
-#     "X-API-Key": os.getenv("MORALIS_API_KEY")
-#   }
-
 #   list_of_dfs = list()
 
-#   response = requests.request("GET", config.moralis_url, headers=headers)
+#   response = requests.request("GET", config.moralis_url, headers=config.moralis_headers)
 #   data = json.loads(response.text)
 #   df_add = pd.DataFrame(data['result'])
 #   list_of_dfs.append(df_add)
@@ -143,7 +123,7 @@ def get_new_tokens():
 #   try:
 #     for i in range(0,3):
 #         url = f"{config.moralis_url}&cursor={cursorUsed}"
-#         response = requests.request("GET", url, headers=headers)
+#         response = requests.request("GET", url, headers=config.moralis_headers)
 #         data = json.loads(response.text)
 #         df_add = pd.DataFrame(data['result'])
 #         list_of_dfs.append(df_add)
@@ -159,34 +139,20 @@ def get_new_tokens():
 
 
 def get_token_analytics(tokenAddress: str):
-  headers = {
-    "Accept": "application/json",
-    "X-API-Key": os.getenv("MORALIS_API_KEY")
-  }
   url = f"https://deep-index.moralis.io/api/v2.2/tokens/{tokenAddress}/analytics?chain=solana"
-
-  response = requests.request("GET", url, headers=headers)
+  response = requests.request("GET", url, headers=config.moralis_headers)
   return json.loads(response.text)
 
 
 def get_token_holder_analytics(tokenAddress: str):
-  headers = {
-    "Accept": "application/json",
-    "X-API-Key": os.getenv("MORALIS_API_KEY")
-  }
   url = f"https://solana-gateway.moralis.io/token/mainnet/holders/{tokenAddress}"
-
-  response = requests.request("GET", url, headers=headers)
+  response = requests.request("GET", url, headers=config.moralis_headers)
   return json.loads(response.text)
 
 
 def get_token_pairs(tokenAddress: str):
-  headers = {
-    "Accept": "application/json",
-    "X-API-Key": os.getenv("MORALIS_API_KEY")
-  }
   url = f"https://solana-gateway.moralis.io/token/mainnet/{tokenAddress}/pairs"
-  response = requests.request("GET", url, headers=headers)
+  response = requests.request("GET", url, headers=config.moralis_headers)
   return json.loads(response.text)
 
 
@@ -196,7 +162,7 @@ def get_main_pair_address(tokenAddress: str):
 
 
 def get_token_holder_counts(tokenAddress: str):
-  holder_dict = get_token_holder_analytics("7EDtqTUgVzNqqE6oNaDSk6exJXYceQ1NdMDd8kSwpump")
+  holder_dict = get_token_holder_analytics(tokenAddress)
   holder_count = holder_dict['totalHolders']
   transfer_count = holder_dict['holdersByAcquisition']['transfer']
   airdrop_count = holder_dict['holdersByAcquisition']['airdrop']
@@ -208,12 +174,10 @@ def get_token_price(tokenAddress: str):
     "network": "mainnet",
     "address": tokenAddress
   }
-
   result = sol_api.token.get_token_price(
     api_key=os.getenv("MORALIS_API_KEY"),
     params=params,
   )
-
   return result
 
 
@@ -229,20 +193,26 @@ def alpha_pos(tokenAddress: str, timeframe: str = "5m"):
 
 
 def get_token_ohlc(pairAddress: str):
-  # Get today's date
   today = datetime.now()
   today_formatted = today.strftime("%Y-%m-%d")
-
-  # Get yesterday's date
   yesterday = today - timedelta(days=1)
   yesterday_formatted = yesterday.strftime("%Y-%m-%d")
-  headers = {
-    "Accept": "application/json",
-    "X-API-Key": os.getenv("MORALIS_API_KEY")
-  }
+
   url = f"https://solana-gateway.moralis.io/token/mainnet/pairs/{pairAddress}/ohlcv?timeframe=1h&currency=usd&fromDate={yesterday_formatted}&toDate={today_formatted}&limit=10"
-  response = requests.request("GET", url, headers=headers)
+  response = requests.request("GET", url, headers=config.moralis_headers)
   return json.loads(response.text)
+
+
+def get_token_pairs(tokenAddress: str):
+  url = f"https://solana-gateway.moralis.io/token/mainnet/{tokenAddress}/pairs"
+  response = requests.request("GET", url, headers=config.moralis_headers)
+  return json.loads(response.text)
+
+
+def get_token_image(tokenAddress: str):
+  pairs = get_token_pairs(tokenAddress)
+  return pairs['pairs'][0]['pair'][0]['tokenLogo']
+
 
 ### DOESN'T WORK BECAUSE NO OHLC DATA FROM PAIR???
 # def get_token_highest_mktcap(tokenAddress: str):

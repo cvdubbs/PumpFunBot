@@ -1,11 +1,11 @@
 import os
 import pandas as pd
 import json
-from dotenv import load_dotenv
-# Load environment variables from .env file
-load_dotenv()
 import requests
 import time
+
+from dotenv import load_dotenv
+load_dotenv()
 
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -15,10 +15,7 @@ import bq_lib
 import moralis_lib
 import utils
 
-###### Compute from Moralis
-# Get New Tokens - 100
-# Get Bonding Tokens - 300
-# Get Hist New Tokens - 2600 for 50 loops/2hrs
+
 ###### Get History from Newest Tokens
 all_tokens_df = moralis_lib.get_hist_new_tokens(3)
 
@@ -42,6 +39,7 @@ for tokenAddress in final_filtered_tokens:
     dev_wallet, creation_time = bq_lib.get_creation_time_dev(tokenAddress)
     age = bq_lib.get_age(creation_time)
     holder_count, transfer_count, airdrop_count = moralis_lib.get_token_holder_counts(tokenAddress)
+    logo_url = moralis_lib.get_token_image(tokenAddress)
     symbol_str = f"{all_tokens_2h_df['symbol'][all_tokens_2h_df['tokenAddress'] == tokenAddress].values[0]} \n"
     name_str = f"# {all_tokens_2h_df['name'][all_tokens_2h_df['tokenAddress'] == tokenAddress].values[0]} \n"
     tokenAddress_str = f"{tokenAddress} \n"
@@ -51,7 +49,12 @@ for tokenAddress in final_filtered_tokens:
     age_str = f"- ⏳ Age: {age} \n"
     dev_wallet_str = f"- 👤 Dev Wallet: [{dev_wallet}](https://solscan.io/account/{dev_wallet}?activity_type=ACTIVITY_SPL_INIT_MINT#defiactivities) \n"
     trade_links_str = f"[AXI](<https://axiom.trade/meme/{tokenAddress}>) - [GMGN](https://gmgn.ai/sol/token/{tokenAddress})"
-    utils.send_discord_message(name_str + symbol_str + tokenAddress_str + mktcap_str + liquidity_str + holder_str + age_str + dev_wallet_str + trade_links_str)
+    utils.send_discord_message(name_str +  symbol_str + tokenAddress_str + mktcap_str + liquidity_str + holder_str + age_str + dev_wallet_str + trade_links_str, logo_url)
+
+# with open("./data/recommended_tokens.txt", "a") as file:
+#             for item in final_filtered_tokens:
+#                 file.write(item + "\n")
+utils.append_to_file("./data/recommended_tokens.txt", final_filtered_tokens)
 
 recommended_tokens = list()
 recommended_tokens.extend(final_filtered_tokens)
@@ -83,6 +86,7 @@ while True:
             dev_wallet, creation_time = bq_lib.get_creation_time_dev(tokenAddress)
             age = bq_lib.get_age(creation_time)
             holder_count, transfer_count, airdrop_count = moralis_lib.get_token_holder_counts(tokenAddress)
+            logo_url = moralis_lib.get_token_image(tokenAddress)
             symbol_str = f"{all_tokens_2h_df['symbol'][all_tokens_2h_df['tokenAddress'] == tokenAddress].values[0]} \n"
             name_str = f"# {all_tokens_2h_df['name'][all_tokens_2h_df['tokenAddress'] == tokenAddress].values[0]} \n"
             tokenAddress_str = f"{tokenAddress} \n"
@@ -92,12 +96,10 @@ while True:
             age_str = f"- ⏳ Age: {age} \n"
             dev_wallet_str = f"- 👤 Dev Wallet: [{dev_wallet}](https://solscan.io/account/{dev_wallet}?activity_type=ACTIVITY_SPL_INIT_MINT#defiactivities) \n"
             trade_links_str = f"[AXI](<https://axiom.trade/meme/{tokenAddress}>) - [GMGN](https://gmgn.ai/sol/token/{tokenAddress})"
-            utils.send_discord_message(name_str + symbol_str + tokenAddress_str + mktcap_str + liquidity_str + holder_str + age_str + dev_wallet_str + trade_links_str)
+            utils.send_discord_message(name_str + symbol_str + tokenAddress_str + mktcap_str + liquidity_str + holder_str + age_str + dev_wallet_str + trade_links_str, logo_url)
         recommended_tokens.extend(final_filtered_tokens)
         # Writing the list to a file
-        with open("./records/recommended_tokens.txt", "w") as file:
-            for item in recommended_tokens:
-                file.write(item + "\n")
+        utils.append_to_file("./data/recommended_tokens.txt", final_filtered_tokens)
         time.sleep(90)
     except Exception as e:
         print(f"Error occurred: {e}, retrying in 30 seconds...")
