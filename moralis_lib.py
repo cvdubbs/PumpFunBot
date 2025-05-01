@@ -111,33 +111,6 @@ def get_new_tokens():
     return pd.DataFrame(columns=['tokenAddress', 'fullyDilutedValuation'])
 
 
-#### OLD VERSION OF FUNCTION
-# def get_new_tokens():
-#   list_of_dfs = list()
-
-#   response = requests.request("GET", config.moralis_url, headers=config.moralis_headers)
-#   data = json.loads(response.text)
-#   df_add = pd.DataFrame(data['result'])
-#   list_of_dfs.append(df_add)
-#   cursorUsed = data['cursor']
-#   try:
-#     for i in range(0,3):
-#         url = f"{config.moralis_url}&cursor={cursorUsed}"
-#         response = requests.request("GET", url, headers=config.moralis_headers)
-#         data = json.loads(response.text)
-#         df_add = pd.DataFrame(data['result'])
-#         list_of_dfs.append(df_add)
-#         cursorUsed = data['cursor']
-#   except:
-#      print("Error in Get New Tokens Moralis")
-#   final_df = pd.concat(list_of_dfs)
-#   final_df = final_df.drop_duplicates()
-#   final_df = final_df[~final_df['tokenAddress'].isna()]
-
-#   final_df['fullyDilutedValuation'] = final_df['fullyDilutedValuation'].astype('float')
-#   return final_df
-
-
 def get_token_analytics(tokenAddress: str):
   url = f"https://deep-index.moralis.io/api/v2.2/tokens/{tokenAddress}/analytics?chain=solana"
   response = requests.request("GET", url, headers=config.moralis_headers)
@@ -209,10 +182,89 @@ def get_token_pairs(tokenAddress: str):
   return json.loads(response.text)
 
 
+def get_dev_wallet(tokenAddress: str):
+  url = f"https://solana-gateway.moralis.io/token/mainnet/{tokenAddress}/swaps?limit=2&order=ASC"
+  response = requests.request("GET", url, headers=config.moralis_headers)
+  data= json.loads(response.text)
+  return data['result'][0]['walletAddress']
+
+
+def get_creation_time(tokenAddress: str):
+  url = f"https://solana-gateway.moralis.io/token/mainnet/{tokenAddress}/swaps?limit=2&order=ASC"
+  response = requests.request("GET", url, headers=config.moralis_headers)
+  data= json.loads(response.text)
+  return data['result'][0]['blockTimestamp']
+
+
+def get_sniper_wallets(tokenAddress: str):
+  url = f"https://solana-gateway.moralis.io/token/mainnet/{tokenAddress}/swaps?order=ASC"
+  response = requests.request("GET", url, headers=config.moralis_headers)
+  data= json.loads(response.text)
+  sniper_wallets = []
+  for wallets in range(0, len(data['result'])):
+    if data['result'][wallets]['walletAddress'] not in sniper_wallets:
+      sniper_wallets.append(data['result'][wallets]['walletAddress'])
+  return sniper_wallets
+
+
 def get_token_image(tokenAddress: str):
   pairs = get_token_pairs(tokenAddress)
   return pairs['pairs'][0]['pair'][0]['tokenLogo']
 
+
+def get_dev_own(tokenAddress: str):
+  dev_wallet = get_dev_wallet(tokenAddress)
+  params = {
+    "network": "mainnet",
+    "address": dev_wallet
+  }
+  result = sol_api.account.get_portfolio(
+    api_key=os.getenv("MORALIS_API_KEY"),
+    params=params,
+  )
+  for token in range(0, len(result['tokens'])):
+    if result['tokens'][token]['mint'] == tokenAddress:
+      return float(result['tokens'][token]['amount'])/1000000000
+    else:
+      continue
+  return float(0.00)
+
+
+def get_snipers(tokenAddress: str):
+  pairAddress = get_main_pair_address(tokenAddress)
+  print(pairAddress)
+  url = f"https://solana-gateway.moralis.io/token/mainnet/pairs/{pairAddress}/snipers?blocksAfterCreation=1000"
+  response = requests.request("GET", url, headers=config.moralis_headers)
+  return json.loads(response.text)
+
+
+def get_snipers_own(tokenAddress: str):
+  snipers = get_sniper_wallets("5QsZSonZWxyHfoxJHDDUPZQMqb1USwTX5zhFtMN1pump")
+  count_snipers_own = 0
+  for wallet in snipers:
+    params = {
+      "network": "mainnet",
+      "address": wallet
+    }
+    result = sol_api.account.get_portfolio(
+      api_key=os.getenv("MORALIS_API_KEY"),
+      params=params,
+    )
+    for token in range(0, len(result['tokens'])):
+      if result['tokens'][token]['mint'] == tokenAddress:
+        count_snipers_own += 1
+      else:
+        continue
+  return count_snipers_own, len(snipers)
+
+
+# tokenAddress = "8DyGnMQ5RrCqanWuVnvyT1T6r1JvnRK17zQCBf1qpump"
+# url = f"https://solana-gateway.moralis.io/token/mainnet/{tokenAddress}/swaps?order=ASC"
+# response = requests.request("GET", url, headers=config.moralis_headers)
+# data= json.loads(response.text)
+
+
+# snipers_own, total_snipers = get_snipers_own("ANrqkQMkaXapaJfrgkZwcmuskozuc8vtHXpaB1t4pump")
 
 ### DOESN'T WORK BECAUSE NO OHLC DATA FROM PAIR???
 # def get_token_highest_mktcap(tokenAddress: str):

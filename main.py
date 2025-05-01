@@ -13,6 +13,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 import config
 import bq_lib
 import moralis_lib
+import quicknode_lib
 import utils
 
 
@@ -32,12 +33,14 @@ check_df = all_tokens_2h_mktcap_df[all_tokens_2h_mktcap_df['tokenAddress'].isin(
 filtered_tokens_by_marketcap = [token for token in rugchecked_tokens if moralis_lib.get_pumpfun_marketcap(token) >= 15000]
 mid_final_filtered_tokens = [token for token in filtered_tokens_by_marketcap if moralis_lib.alpha_pos(token, '5m') >= 1]
 final_filtered_tokens = [token for token in mid_final_filtered_tokens if moralis_lib.alpha_pos(token, '1h') >= 0]
+# Can add volume here too using alpha_pos
 print(final_filtered_tokens)
 
 for tokenAddress in final_filtered_tokens:
     mkt_cap = moralis_lib.get_pumpfun_marketcap(tokenAddress)
-    dev_wallet, creation_time = bq_lib.get_creation_time_dev(tokenAddress)
-    age = bq_lib.get_age(creation_time)
+    dev_wallet = moralis_lib.get_dev_wallet(tokenAddress)
+    creation_time = moralis_lib.get_creation_time(tokenAddress)
+    age = utils.get_age(creation_time)
     holder_count, transfer_count, airdrop_count = moralis_lib.get_token_holder_counts(tokenAddress)
     logo_url = moralis_lib.get_token_image(tokenAddress)
     symbol_str = f"{all_tokens_2h_df['symbol'][all_tokens_2h_df['tokenAddress'] == tokenAddress].values[0]} \n"
@@ -83,8 +86,9 @@ while True:
         print(final_filtered_tokens)
         for tokenAddress in final_filtered_tokens:
             mkt_cap = moralis_lib.get_pumpfun_marketcap(tokenAddress)
-            dev_wallet, creation_time = bq_lib.get_creation_time_dev(tokenAddress)
-            age = bq_lib.get_age(creation_time)
+            dev_wallet = moralis_lib.get_dev_wallet(tokenAddress)
+            creation_time = moralis_lib.get_creation_time(tokenAddress)
+            age = utils.get_age(creation_time)
             holder_count, transfer_count, airdrop_count = moralis_lib.get_token_holder_counts(tokenAddress)
             logo_url = moralis_lib.get_token_image(tokenAddress)
             symbol_str = f"{all_tokens_2h_df['symbol'][all_tokens_2h_df['tokenAddress'] == tokenAddress].values[0]} \n"

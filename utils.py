@@ -6,6 +6,7 @@ import pytz
 import pandas as pd
 import bq_lib
 import moralis_lib
+import quicknode_lib
 import config
 import utils
 
@@ -63,24 +64,24 @@ def list_rug_checked_tokens(df: pd.DataFrame) -> list:
             print(f"Error getting Moralis holder counts token {tokenAddress}")
             continue
         try:
-            dev_wallet, creation_time = (bq_lib.get_creation_time_dev(tokenAddress))
+            dev_percent_owned = (moralis_lib.get_dev_own(tokenAddress))
         except:
-            print(f"Error getting dev wallet for token {tokenAddress}")
+            print(f"Error getting dev ownership for token {tokenAddress}")
             continue
-        if dev_wallet is None:
+        if dev_percent_owned is None:
             continue
-        dev_percent_owned = bq_lib.dev_owns(tokenAddress, dev_wallet)
         if dev_percent_owned > 0.05:
             append_to_file("./data/reject_why.txt", [f"{tokenAddress} - dev owns {dev_percent_owned}%"])
             continue
-        top_10_own_float = bq_lib.get_top_10_holders_ownership(tokenAddress)
+        topholders_result = quicknode_lib.get_top_holders_percentage(tokenAddress)
+        top_10_own_float = topholders_result['top_10_percentage']
         if top_10_own_float > 33.00:
             append_to_file("./data/reject_why.txt", [f"{tokenAddress} - top 10 own {top_10_own_float}%"])
             continue
-        sniper_check = bq_lib.snipers_still_own(tokenAddress)
-        if sniper_check > 30:
-            append_to_file("./data/reject_why.txt", [f"{tokenAddress} - snipers still own {sniper_check}"])
-        if dev_percent_owned <= 0.05 and top_10_own_float <= 33.00 and sniper_check <= 30:
+        # sniper_own, total_snipers = moralis_lib.get_snipers_own(tokenAddress)
+        # if sniper_own > 30:
+        #     append_to_file("./data/reject_why.txt", [f"{tokenAddress} - snipers still own {sniper_own}"])
+        if dev_percent_owned <= 0.05 and top_10_own_float <= 33.00: # and sniper_check <= 30
             rugchecked_tokens.append(tokenAddress)
     return rugchecked_tokens
 
@@ -126,3 +127,7 @@ def append_to_file(file_path: str, data: list):
     with open(file_path, "a") as file:
             for item in data:
                 file.write(item + "\n")
+
+def get_age(creation_time: str) -> str:
+    hours, minutes, seconds = calculate_time_difference(creation_time)
+    return f'{hours} hrs: {minutes} mins: {seconds} secs'
