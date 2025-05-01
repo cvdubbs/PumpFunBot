@@ -1,25 +1,14 @@
-import os
 import pandas as pd
-import json
-import requests
 import time
-
-from dotenv import load_dotenv
-load_dotenv()
-
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-import config
-import bq_lib
 import moralis_lib
-import quicknode_lib
 import utils
 
 # TODO: Add logging
 # TODO: Add try and except repeats for requests for moralis
 # TODO: Add Volume amounts to alpha
-# TODO: Discord message function
 # TODO: Remove Bitquery
 
 ###### Get History from Newest Tokens
@@ -51,26 +40,10 @@ tokenAddress = "GH7JQy33KeTgDsCzrPohGxt5fmNAw9Rj2s8QEoXtpump"
 logo_url = moralis_lib.get_token_image(tokenAddress)
 
 for tokenAddress in final_filtered_tokens:
-    mkt_cap = moralis_lib.get_pumpfun_marketcap(tokenAddress)
-    dev_wallet = moralis_lib.get_dev_wallet(tokenAddress)
-    creation_time = moralis_lib.get_creation_time(tokenAddress)
-    age = utils.get_age(creation_time)
-    holder_count, transfer_count, airdrop_count = moralis_lib.get_token_holder_counts(tokenAddress)
     logo_url = moralis_lib.get_token_image(tokenAddress)
-    symbol_str = f"{all_tokens_2h_df['symbol'][all_tokens_2h_df['tokenAddress'] == tokenAddress].values[0]} \n"
-    name_str = f"# {all_tokens_2h_df['name'][all_tokens_2h_df['tokenAddress'] == tokenAddress].values[0]} \n"
-    tokenAddress_str = f"{tokenAddress} \n"
-    mktcap_str = f" \n- 🏷️ MktCap: {round(mkt_cap,0)/1000}k  \n"
-    liquidity_str = f"- 💧 Liquidity: {round(float(all_tokens_2h_df['liquidity'][all_tokens_2h_df['tokenAddress'] == tokenAddress].values[0])/1000,0)}k  \n"
-    holder_str = f"- 👥 Holder Count: {holder_count} - Airdropped: {airdrop_count} - Transfered: {transfer_count} \n"
-    age_str = f"- ⏳ Age: {age} \n"
-    dev_wallet_str = f"- 👤 Dev Wallet: [{dev_wallet}](https://solscan.io/account/{dev_wallet}?activity_type=ACTIVITY_SPL_INIT_MINT#defiactivities) \n"
-    trade_links_str = f"[AXI](<https://axiom.trade/meme/{tokenAddress}>) - [GMGN](https://gmgn.ai/sol/token/{tokenAddress})"
-    utils.send_discord_message(name_str +  symbol_str + tokenAddress_str + mktcap_str + liquidity_str + holder_str + age_str + dev_wallet_str + trade_links_str, logo_url)
+    discord_message = utils.clean_text_strings_for_discord(all_tokens_2h_df, tokenAddress, *utils.get_output_info(tokenAddress))
+    utils.send_discord_message(discord_message, logo_url)
 
-# with open("./data/recommended_tokens.txt", "a") as file:
-#             for item in final_filtered_tokens:
-#                 file.write(item + "\n")
 utils.append_to_file("./data/recommended_tokens.txt", final_filtered_tokens)
 
 recommended_tokens = list()
@@ -99,22 +72,9 @@ while True:
         final_filtered_tokens = [token for token in mid_final_filtered_tokens if moralis_lib.alpha_pos(token, '1h') >= 0]
         print(final_filtered_tokens)
         for tokenAddress in final_filtered_tokens:
-            mkt_cap = moralis_lib.get_pumpfun_marketcap(tokenAddress)
-            dev_wallet = moralis_lib.get_dev_wallet(tokenAddress)
-            creation_time = moralis_lib.get_creation_time(tokenAddress)
-            age = utils.get_age(creation_time)
-            holder_count, transfer_count, airdrop_count = moralis_lib.get_token_holder_counts(tokenAddress)
             logo_url = moralis_lib.get_token_image(tokenAddress)
-            symbol_str = f"{all_tokens_2h_df['symbol'][all_tokens_2h_df['tokenAddress'] == tokenAddress].values[0]} \n"
-            name_str = f"# {all_tokens_2h_df['name'][all_tokens_2h_df['tokenAddress'] == tokenAddress].values[0]} \n"
-            tokenAddress_str = f"{tokenAddress} \n"
-            mktcap_str = f" \n- 🏷️ MktCap: {round(mkt_cap,0)/1000}k  \n"
-            liquidity_str = f"- 💧 Liquidity: {round(float(all_tokens_2h_df['liquidity'][all_tokens_2h_df['tokenAddress'] == tokenAddress].values[0])/1000,0)}k  \n"
-            holder_str = f"- 👥 Holder Count: {holder_count} - Airdropped: {airdrop_count} - Transfered: {transfer_count} \n"
-            age_str = f"- ⏳ Age: {age} \n"
-            dev_wallet_str = f"- 👤 Dev Wallet: [{dev_wallet}](https://solscan.io/account/{dev_wallet}?activity_type=ACTIVITY_SPL_INIT_MINT#defiactivities) \n"
-            trade_links_str = f"[AXI](<https://axiom.trade/meme/{tokenAddress}>) - [GMGN](https://gmgn.ai/sol/token/{tokenAddress})"
-            utils.send_discord_message(name_str + symbol_str + tokenAddress_str + mktcap_str + liquidity_str + holder_str + age_str + dev_wallet_str + trade_links_str, logo_url)
+            discord_message = utils.clean_text_strings_for_discord(all_tokens_2h_df, tokenAddress, *utils.get_output_info(tokenAddress))
+            utils.send_discord_message(discord_message, logo_url)
         recommended_tokens.extend(final_filtered_tokens)
         # Writing the list to a file
         utils.append_to_file("./data/recommended_tokens.txt", final_filtered_tokens)
