@@ -16,9 +16,20 @@ import moralis_lib
 import quicknode_lib
 import utils
 
+# TODO: Add logging
+# TODO: Add try and except repeats for requests for moralis
+# TODO: Add Volume amounts to alpha
+# TODO: Discord message function
+# TODO: Remove Bitquery
 
 ###### Get History from Newest Tokens
-all_tokens_df = moralis_lib.get_hist_new_tokens(3)
+all_tokens_df = None
+while all_tokens_df is None:
+    try:
+        all_tokens_df = moralis_lib.get_hist_new_tokens(3)
+    except Exception as e:
+        print(f"Error occurred while fetching new tokens: {e}")
+        time.sleep(60)
 
 # only 2 hrs
 all_tokens_2h_df = utils.filter_only_last_two_hours(all_tokens_df)
@@ -35,6 +46,9 @@ mid_final_filtered_tokens = [token for token in filtered_tokens_by_marketcap if 
 final_filtered_tokens = [token for token in mid_final_filtered_tokens if moralis_lib.alpha_pos(token, '1h') >= 0]
 # Can add volume here too using alpha_pos
 print(final_filtered_tokens)
+
+tokenAddress = "GH7JQy33KeTgDsCzrPohGxt5fmNAw9Rj2s8QEoXtpump"
+logo_url = moralis_lib.get_token_image(tokenAddress)
 
 for tokenAddress in final_filtered_tokens:
     mkt_cap = moralis_lib.get_pumpfun_marketcap(tokenAddress)

@@ -207,11 +207,6 @@ def get_sniper_wallets(tokenAddress: str):
   return sniper_wallets
 
 
-def get_token_image(tokenAddress: str):
-  pairs = get_token_pairs(tokenAddress)
-  return pairs['pairs'][0]['pair'][0]['tokenLogo']
-
-
 def get_dev_own(tokenAddress: str):
   dev_wallet = get_dev_wallet(tokenAddress)
   params = {
@@ -258,7 +253,22 @@ def get_snipers_own(tokenAddress: str):
   return count_snipers_own, len(snipers)
 
 
-# tokenAddress = "8DyGnMQ5RrCqanWuVnvyT1T6r1JvnRK17zQCBf1qpump"
+
+def get_metadata(tokenAddress: str):
+  url = f"https://solana-gateway.moralis.io/token/mainnet/{tokenAddress}/metadata"
+  response = requests.request("GET", url, headers=config.moralis_headers)
+  return json.loads(response.text)
+
+
+def get_token_image(tokenAddress: str):
+  metadata = get_metadata(tokenAddress)
+  ipfs_url = metadata['metaplex']['metadataUri']
+  response = requests.request("GET", ipfs_url)
+  result = json.loads(response.text)
+  return result['image']
+
+
+
 # url = f"https://solana-gateway.moralis.io/token/mainnet/{tokenAddress}/swaps?order=ASC"
 # response = requests.request("GET", url, headers=config.moralis_headers)
 # data= json.loads(response.text)
