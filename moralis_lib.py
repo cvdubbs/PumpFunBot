@@ -1,5 +1,6 @@
 import os
 from datetime import datetime, timedelta
+import time
 import pandas as pd
 import json
 from dotenv import load_dotenv
@@ -40,27 +41,31 @@ def get_hist_new_tokens(loops = 50):
 
 def get_bonding_tokens() -> pd.DataFrame:
   list_of_dfs = list()
-
-  response = requests.request("GET", config.moralis_bonding_url, headers=config.moralis_headers)
-  data = json.loads(response.text)
-  df_add = pd.DataFrame(data['result'])
-  list_of_dfs.append(df_add)
-  cursorUsed = data['cursor']
-  try:
-    for i in range(0,5):
-        url = f"https://solana-gateway.moralis.io/token/mainnet/exchange/pumpfun/bonding?limit={config.NewTokenCount}&cursor={cursorUsed}"
-        response = requests.request("GET", url, headers=config.moralis_headers)
-        data = json.loads(response.text)
-        df_add = pd.DataFrame(data['result'])
-        list_of_dfs.append(df_add)
-        cursorUsed = data['cursor']
-  except:
-      print("Error in Get Bonding Tokens Moralis")
+  while not list_of_dfs:
+    response = requests.request("GET", config.moralis_bonding_url, headers=config.moralis_headers)
+    data = json.loads(response.text)
+    df_add = pd.DataFrame(data['result'])
+    list_of_dfs.append(df_add)
+    cursorUsed = data['cursor']
+    try:
+      for i in range(0,5):
+          url = f"https://solana-gateway.moralis.io/token/mainnet/exchange/pumpfun/bonding?limit={config.NewTokenCount}&cursor={cursorUsed}"
+          response = requests.request("GET", url, headers=config.moralis_headers)
+          data = json.loads(response.text)
+          df_add = pd.DataFrame(data['result'])
+          list_of_dfs.append(df_add)
+          cursorUsed = data['cursor']
+    except:
+        print("Error in Get Bonding Tokens Moralis, trying again in 30 seconds")
+        time.sleep(30)
   final_df = pd.concat(list_of_dfs)
   final_df = final_df.drop_duplicates()
   final_df = final_df[~final_df['tokenAddress'].isna()]
-  # final_df.to_csv('./IO_Files/TokensBondingDB.csv', index=False)
-
+  previos_df = pd.read_csv('./IO_Files/TokensBondingDB.csv')
+  filtered_previous_df = previos_df[~previos_df['tokenAddress'].isin(final_df['tokenAddress'])]
+  data_save = pd.concat([filtered_previous_df, final_df])
+  data_save = data_save.drop_duplicates()
+  data_save.to_csv('./IO_Files/TokensBondingDB.csv',  mode='w', index=False)
   final_df['fullyDilutedValuation'] = final_df['fullyDilutedValuation'].astype('float')
   return final_df
 
@@ -165,13 +170,15 @@ def alpha_pos(tokenAddress: str, timeframe: str = "5m"):
   return net_vol_5min
 
 
-def get_token_ohlc(pairAddress: str):
+def get_token_ohlc(pairAddress: str, timeframe: str = "1h"):
   today = datetime.now()
   today_formatted = today.strftime("%Y-%m-%d")
   yesterday = today - timedelta(days=1)
   yesterday_formatted = yesterday.strftime("%Y-%m-%d")
+  tomorrow = today + timedelta(days=1)
+  tomorrow_formatted = tomorrow.strftime("%Y-%m-%d")
 
-  url = f"https://solana-gateway.moralis.io/token/mainnet/pairs/{pairAddress}/ohlcv?timeframe=1h&currency=usd&fromDate={yesterday_formatted}&toDate={today_formatted}&limit=10"
+  url = f"https://solana-gateway.moralis.io/token/mainnet/pairs/{pairAddress}/ohlcv?timeframe={timeframe}&currency=usd&fromDate={yesterday_formatted}&toDate={tomorrow_formatted}&limit=10"
   response = requests.request("GET", url, headers=config.moralis_headers)
   return json.loads(response.text)
 
@@ -268,19 +275,9 @@ def get_token_image(tokenAddress: str):
   return result['image']
 
 
-
-# url = f"https://solana-gateway.moralis.io/token/mainnet/{tokenAddress}/swaps?order=ASC"
-# response = requests.request("GET", url, headers=config.moralis_headers)
-# data= json.loads(response.text)
-
+def get_max_mktcap(tokenAddress: str):  
+  pairAddress = get_main_pair_address(tokenAddress)
+  ohlc_data = get_token_ohlc(pairAddress, '12h')
+  return ohlc_data['result'][0]['high'] * 1000000000
 
 # snipers_own, total_snipers = get_snipers_own("ANrqkQMkaXapaJfrgkZwcmuskozuc8vtHXpaB1t4pump")
-
-### DOESN'T WORK BECAUSE NO OHLC DATA FROM PAIR???
-# def get_token_highest_mktcap(tokenAddress: str):
-#   pairAddress = get_main_pair_address(tokenAddress)
-#   ohlc_data = get_token_ohlc(pairAddress)
-#   print()
-#   return ohlc_data['result'][0]['high'] * 1000000000
-
-

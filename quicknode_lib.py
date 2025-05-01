@@ -39,6 +39,7 @@ def get_token_largest_accounts(token_address, quicknode_url):
     
     return []
 
+
 def get_token_account_balance(account_address, quicknode_url):
     """Get the balance of a specific token account"""
     headers = {"Content-Type": "application/json"}
@@ -56,6 +57,7 @@ def get_token_account_balance(account_address, quicknode_url):
             return Decimal(result['value']['amount']) / (10 ** result['value']['decimals'])
     
     return None
+
 
 def get_top_holders_percentage(token_address, quicknode_url=config.quicknode_url):
     """Get the percentage of top 10 holders for a token"""

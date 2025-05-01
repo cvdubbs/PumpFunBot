@@ -69,7 +69,7 @@ def list_rug_checked_tokens(df: pd.DataFrame) -> list:
             continue
         if dev_percent_owned is None:
             continue
-        if dev_percent_owned > 0.05:
+        if dev_percent_owned > 0.005:
             append_to_file("./data/reject_why.txt", [f"{tokenAddress} - dev owns {dev_percent_owned}%"])
             continue
         topholders_result = quicknode_lib.get_top_holders_percentage(tokenAddress)

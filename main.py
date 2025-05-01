@@ -9,8 +9,8 @@ import utils
 # TODO: Add logging
 # TODO: Add try and except repeats for requests for moralis
 # TODO: Add Volume amounts to alpha
-# TODO: Remove Bitquery
 
+winner_tracking_dict = dict()
 ###### Get History from Newest Tokens
 all_tokens_df = None
 while all_tokens_df is None:
@@ -30,18 +30,18 @@ all_tokens_2h_mktcap_df = all_tokens_2h_df[(all_tokens_2h_df['fullyDilutedValuat
 rugchecked_tokens = utils.list_rug_checked_tokens(all_tokens_2h_mktcap_df)
 check_df = all_tokens_2h_mktcap_df[all_tokens_2h_mktcap_df['tokenAddress'].isin(rugchecked_tokens)]
 
-filtered_tokens_by_marketcap = [token for token in rugchecked_tokens if moralis_lib.get_pumpfun_marketcap(token) >= 15000]
+filtered_tokens_by_marketcap = [token for token in rugchecked_tokens if (moralis_lib.get_pumpfun_marketcap(token) >= 15000 and moralis_lib.get_pumpfun_marketcap(token) >=  .9 * moralis_lib.get_max_mktcap(tokenAddress))]
 mid_final_filtered_tokens = [token for token in filtered_tokens_by_marketcap if moralis_lib.alpha_pos(token, '5m') >= 1]
 final_filtered_tokens = [token for token in mid_final_filtered_tokens if moralis_lib.alpha_pos(token, '1h') >= 0]
-# Can add volume here too using alpha_pos
+# Can add total volume here too using alpha_pos
 print(final_filtered_tokens)
-
-tokenAddress = "GH7JQy33KeTgDsCzrPohGxt5fmNAw9Rj2s8QEoXtpump"
-logo_url = moralis_lib.get_token_image(tokenAddress)
 
 for tokenAddress in final_filtered_tokens:
     logo_url = moralis_lib.get_token_image(tokenAddress)
-    discord_message = utils.clean_text_strings_for_discord(all_tokens_2h_df, tokenAddress, *utils.get_output_info(tokenAddress))
+    discord_message = utils.clean_text_strings_for_discord(
+        all_tokens_2h_df, 
+        tokenAddress, 
+        *utils.get_output_info(tokenAddress))
     utils.send_discord_message(discord_message, logo_url)
 
 utils.append_to_file("./data/recommended_tokens.txt", final_filtered_tokens)
@@ -73,9 +73,56 @@ while True:
         print(final_filtered_tokens)
         for tokenAddress in final_filtered_tokens:
             logo_url = moralis_lib.get_token_image(tokenAddress)
-            discord_message = utils.clean_text_strings_for_discord(all_tokens_2h_df, tokenAddress, *utils.get_output_info(tokenAddress))
+            discord_message = utils.clean_text_strings_for_discord(
+                all_tokens_2h_df, 
+                tokenAddress, 
+                *utils.get_output_info(tokenAddress))
             utils.send_discord_message(discord_message, logo_url)
         recommended_tokens.extend(final_filtered_tokens)
+        ### Check for winners
+        ### use winner_tracking_dict to store last max mkt cap  
+        for tokenAddress in recommended_tokens:
+            max_mkt_cap = moralis_lib.get_max_mktcap(tokenAddress)
+            
+            # Initialize token in tracking dict if not present
+            if tokenAddress not in winner_tracking_dict.keys():
+                if max_mkt_cap > 60000:
+                    discord_message = f"Winner Found: {tokenAddress} with market cap of {max_mkt_cap}"
+                    utils.send_discord_message(discord_message)
+                    winner_tracking_dict[tokenAddress] = max_mkt_cap
+                    # Also track which thresholds this token has triggered
+                    winner_tracking_dict[f"{tokenAddress}_triggered"] = [60000]
+                else:
+                    # Initialize with current market cap but don't send message yet
+                    winner_tracking_dict[tokenAddress] = max_mkt_cap
+                    winner_tracking_dict[f"{tokenAddress}_triggered"] = []
+                continue
+            
+            # Skip if market cap is not higher than last recorded value
+            if max_mkt_cap <= winner_tracking_dict[tokenAddress]:
+                continue
+            
+            # Update the tracked market cap
+            winner_tracking_dict[tokenAddress] = max_mkt_cap
+            
+            # Check thresholds and only trigger if not previously triggered
+            thresholds = [
+                (120000, 200000),
+                (200000, 500000),
+                (500000, 1000000),
+                (1000000, float('inf'))
+            ]
+            
+            triggered_list = winner_tracking_dict.get(f"{tokenAddress}_triggered", [])
+            
+            for lower, upper in thresholds:
+                if max_mkt_cap > lower and max_mkt_cap < upper and lower not in triggered_list:
+                    discord_message = f"Winner Found: {tokenAddress} with market cap of {max_mkt_cap}"
+                    utils.send_discord_message(discord_message)
+                    triggered_list.append(lower)
+                    winner_tracking_dict[f"{tokenAddress}_triggered"] = triggered_list
+                    break
+
         # Writing the list to a file
         utils.append_to_file("./data/recommended_tokens.txt", final_filtered_tokens)
         time.sleep(90)
