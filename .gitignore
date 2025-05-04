@@ -175,3 +175,4 @@ cython_debug/
 /IO_Files/*
 
 alpha.py
+/data

@@ -160,3 +160,17 @@ def clean_text_strings_for_discord(all_tokens_2h_df: pd.DataFrame, tokenAddress:
             age_str + 
             dev_wallet_str + 
             trade_links_str)
+
+
+def read_text_to_list(file_path: str) -> list:
+    token_list = []
+    try:
+        with open(file_path, 'r') as file:
+            # Read each line, strip whitespace, and add to the list
+            token_list = [line.strip() for line in file]
+        print(f"Successfully read {len(token_list)} tokens from file")
+    except FileNotFoundError:
+        print(f"Error: File '{file_path}' not found")
+    except Exception as e:
+        print(f"Error reading file: {str(e)}")
+    return token_list
