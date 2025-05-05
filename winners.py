@@ -14,7 +14,7 @@ recommended_tokens = utils.read_text_to_list("./data/recommended_tokens.txt")
 recommended_tokens = list(dict.fromkeys(recommended_tokens))
 for i in range(0,len(recommended_tokens)):
     try:
-        max_mkt_cap = (moralis_lib.get_max_mktcap(recommended_tokens[i]))
+        max_mkt_cap = (moralis_lib.get_max_mktcap(recommended_tokens[i], '12h'))
         print(f"Max mkt cap for {recommended_tokens[i]} is {max_mkt_cap}")
     except Exception as e:
         time.sleep(1)
@@ -26,3 +26,9 @@ for i in range(0,len(recommended_tokens)):
         output_mktcap = format(mktcap_clean, ",")
         utils.send_discord_message(f"Winner Found: {token_name} - ({recommended_tokens[i]}) \n with market cap of {output_mktcap}k")
 
+####### TEST
+# tokenAddress = "FdaWdp1b6XFG7118W4G2GcprUajhhkbg5jtk3duupump"
+# max_mkt_cap = (moralis_lib.get_max_mktcap(tokenAddress))
+# pairs = moralis_lib.get_token_pairs(tokenAddress)
+# pairAddress = moralis_lib.get_main_pair_address(tokenAddress)
+# ohlc_data = moralis_lib.get_token_ohlc(pairAddress, '1w')

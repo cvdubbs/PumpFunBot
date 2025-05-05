@@ -540,10 +540,10 @@ def get_token_image(tokenAddress: str):
   return result['image']
 
 
-def get_max_mktcap(tokenAddress: str):
+def get_max_mktcap(tokenAddress: str, timeframe: str = "12h"):
   try:
     pairAddress = get_main_pair_address(tokenAddress)
-    ohlc_data = get_token_ohlc(pairAddress, '12h')
+    ohlc_data = get_token_ohlc(pairAddress, timeframe)
     max_mkt_cap = ohlc_data['result'][0]['high'] * 1000000000
   except Exception as e:
     print(f"Error fetching max market cap: {str(e)} for token {tokenAddress}")
