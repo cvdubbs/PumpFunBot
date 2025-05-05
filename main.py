@@ -1,26 +1,24 @@
-import os
 import pandas as pd
-import json
-from dotenv import load_dotenv
-# Load environment variables from .env file
-load_dotenv()
-import requests
 import time
-
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-import config
-import bq_lib
 import moralis_lib
 import utils
 
-###### Compute from Moralis
-# Get New Tokens - 100
-# Get Bonding Tokens - 300
-# Get Hist New Tokens - 2600 for 50 loops/2hrs
+# TODO: Add logging
+# TODO: Add try and except repeats for requests for moralis
+# TODO: Add Volume amounts to alpha
+# TODO: Min holder amount
+
 ###### Get History from Newest Tokens
-all_tokens_df = moralis_lib.get_hist_new_tokens(3)
+all_tokens_df = None
+while all_tokens_df is None:
+    try:
+        all_tokens_df = moralis_lib.get_hist_new_tokens(3)
+    except Exception as e:
+        print(f"Error occurred while fetching new tokens: {e}")
+        time.sleep(60)
 
 # only 2 hrs
 all_tokens_2h_df = utils.filter_only_last_two_hours(all_tokens_df)
@@ -32,33 +30,32 @@ all_tokens_2h_mktcap_df = all_tokens_2h_df[(all_tokens_2h_df['fullyDilutedValuat
 rugchecked_tokens = utils.list_rug_checked_tokens(all_tokens_2h_mktcap_df)
 check_df = all_tokens_2h_mktcap_df[all_tokens_2h_mktcap_df['tokenAddress'].isin(rugchecked_tokens)]
 
-filtered_tokens_by_marketcap = [token for token in rugchecked_tokens if moralis_lib.get_pumpfun_marketcap(token) >= 15000]
+filtered_tokens_by_marketcap = [token for token in rugchecked_tokens if (moralis_lib.get_pumpfun_marketcap(token) >= 15000 and moralis_lib.get_pumpfun_marketcap(token) >=  .9 * moralis_lib.get_max_mktcap(token))]
 mid_final_filtered_tokens = [token for token in filtered_tokens_by_marketcap if moralis_lib.alpha_pos(token, '5m') >= 1]
 final_filtered_tokens = [token for token in mid_final_filtered_tokens if moralis_lib.alpha_pos(token, '1h') >= 0]
+final_filtered_tokens = [token for token in final_filtered_tokens if moralis_lib.alpha_vol(token) >= 20000]
+# Can add total volume here too using alpha_pos
 print(final_filtered_tokens)
 
 for tokenAddress in final_filtered_tokens:
-    mkt_cap = moralis_lib.get_pumpfun_marketcap(tokenAddress)
-    dev_wallet, creation_time = bq_lib.get_creation_time_dev(tokenAddress)
-    age = bq_lib.get_age(creation_time)
-    holder_count, transfer_count, airdrop_count = moralis_lib.get_token_holder_counts(tokenAddress)
-    symbol_str = f"{all_tokens_2h_df['symbol'][all_tokens_2h_df['tokenAddress'] == tokenAddress].values[0]} \n"
-    name_str = f"# {all_tokens_2h_df['name'][all_tokens_2h_df['tokenAddress'] == tokenAddress].values[0]} \n"
-    tokenAddress_str = f"{tokenAddress} \n"
-    mktcap_str = f" \n- 🏷️ MktCap: {round(mkt_cap,0)/1000}k  \n"
-    liquidity_str = f"- 💧 Liquidity: {round(float(all_tokens_2h_df['liquidity'][all_tokens_2h_df['tokenAddress'] == tokenAddress].values[0])/1000,0)}k  \n"
-    holder_str = f"- 👥 Holder Count: {holder_count} - Airdropped: {airdrop_count} - Transfered: {transfer_count} \n"
-    age_str = f"- ⏳ Age: {age} \n"
-    dev_wallet_str = f"- 👤 Dev Wallet: [{dev_wallet}](https://solscan.io/account/{dev_wallet}?activity_type=ACTIVITY_SPL_INIT_MINT#defiactivities) \n"
-    trade_links_str = f"[AXI](<https://axiom.trade/meme/{tokenAddress}>) - [GMGN](https://gmgn.ai/sol/token/{tokenAddress})"
-    utils.send_discord_message(name_str + symbol_str + tokenAddress_str + mktcap_str + liquidity_str + holder_str + age_str + dev_wallet_str + trade_links_str)
+    logo_url = moralis_lib.get_token_image(tokenAddress)
+    discord_message = utils.clean_text_strings_for_discord(
+        all_tokens_2h_df, 
+        tokenAddress, 
+        *utils.get_output_info(tokenAddress))
+    utils.send_discord_message(discord_message, logo_url)
+
+utils.append_to_file("./data/recommended_tokens.txt", final_filtered_tokens)
 
 recommended_tokens = list()
 recommended_tokens.extend(final_filtered_tokens)
-
+loop = 0
 while True:
     try:
         #### Check for coins that now meet marketcap
+        loop += 1
+        print(f"Loop {loop}")
+        print("Getting bonding tokens")
         tokens_to_re_consider = moralis_lib.get_bonding_tokens()
         tokens_to_re_consider = tokens_to_re_consider[(tokens_to_re_consider['fullyDilutedValuation'] >= 15000) & (tokens_to_re_consider['fullyDilutedValuation'] <= 49000)]
         update_tokens = all_tokens_2h_df[all_tokens_2h_df['tokenAddress'].isin(tokens_to_re_consider['tokenAddress'].unique().tolist())].copy()
@@ -66,6 +63,7 @@ while True:
         update_tokens['fullyDilutedValuation'] = update_tokens['tokenAddress'].map(valuation_dict)
 
         # update_tokens needs rug check now + new
+        print("Getting new tokens")
         new_tokens_to_add_df = moralis_lib.get_new_tokens()
         new_tokens_to_add_df = new_tokens_to_add_df[~new_tokens_to_add_df['tokenAddress'].isin(all_tokens_2h_df['tokenAddress'].unique().tolist())]
         all_tokens_2h_df = pd.concat([all_tokens_2h_df, new_tokens_to_add_df], ignore_index=True)
@@ -74,30 +72,23 @@ while True:
         rugchecked_tokens = utils.list_rug_checked_tokens(latest_check)
         filtered_tokens = [token for token in rugchecked_tokens if token not in recommended_tokens]
         all_tokens_2h_df = utils.filter_only_last_two_hours(all_tokens_2h_df)
-        filtered_tokens_by_marketcap = [token for token in filtered_tokens if moralis_lib.get_pumpfun_marketcap(token) >= 15000]
+        filtered_tokens_by_marketcap = [token for token in filtered_tokens if (moralis_lib.get_pumpfun_marketcap(token) >= 15000 and moralis_lib.get_pumpfun_marketcap(token) >=  .9 * moralis_lib.get_max_mktcap(token))]
         mid_final_filtered_tokens = [token for token in filtered_tokens_by_marketcap if moralis_lib.alpha_pos(token, '5m') >= 1]
         final_filtered_tokens = [token for token in mid_final_filtered_tokens if moralis_lib.alpha_pos(token, '1h') >= 0]
-        print(final_filtered_tokens)
+        final_filtered_tokens = [token for token in final_filtered_tokens if moralis_lib.alpha_vol(token) >= 20000]
+        print(f"final filtered tokens: {final_filtered_tokens}")
         for tokenAddress in final_filtered_tokens:
-            mkt_cap = moralis_lib.get_pumpfun_marketcap(tokenAddress)
-            dev_wallet, creation_time = bq_lib.get_creation_time_dev(tokenAddress)
-            age = bq_lib.get_age(creation_time)
-            holder_count, transfer_count, airdrop_count = moralis_lib.get_token_holder_counts(tokenAddress)
-            symbol_str = f"{all_tokens_2h_df['symbol'][all_tokens_2h_df['tokenAddress'] == tokenAddress].values[0]} \n"
-            name_str = f"# {all_tokens_2h_df['name'][all_tokens_2h_df['tokenAddress'] == tokenAddress].values[0]} \n"
-            tokenAddress_str = f"{tokenAddress} \n"
-            mktcap_str = f" \n- 🏷️ MktCap: {round(mkt_cap,0)/1000}k  \n"
-            liquidity_str = f"- 💧 Liquidity: {round(float(all_tokens_2h_df['liquidity'][all_tokens_2h_df['tokenAddress'] == tokenAddress].values[0])/1000,0)}k  \n"
-            holder_str = f"- 👥 Holder Count: {holder_count} - Airdropped: {airdrop_count} - Transfered: {transfer_count} \n"
-            age_str = f"- ⏳ Age: {age} \n"
-            dev_wallet_str = f"- 👤 Dev Wallet: [{dev_wallet}](https://solscan.io/account/{dev_wallet}?activity_type=ACTIVITY_SPL_INIT_MINT#defiactivities) \n"
-            trade_links_str = f"[AXI](<https://axiom.trade/meme/{tokenAddress}>) - [GMGN](https://gmgn.ai/sol/token/{tokenAddress})"
-            utils.send_discord_message(name_str + symbol_str + tokenAddress_str + mktcap_str + liquidity_str + holder_str + age_str + dev_wallet_str + trade_links_str)
+            logo_url = moralis_lib.get_token_image(tokenAddress)
+            discord_message = utils.clean_text_strings_for_discord(
+                all_tokens_2h_df, 
+                tokenAddress, 
+                *utils.get_output_info(tokenAddress))
+            utils.send_discord_message(discord_message, logo_url)
         recommended_tokens.extend(final_filtered_tokens)
+ 
         # Writing the list to a file
-        with open("./records/recommended_tokens.txt", "w") as file:
-            for item in recommended_tokens:
-                file.write(item + "\n")
+        utils.append_to_file("./data/recommended_tokens.txt", final_filtered_tokens)
+        print("Sleeping for 90 seconds")
         time.sleep(90)
     except Exception as e:
         print(f"Error occurred: {e}, retrying in 30 seconds...")
