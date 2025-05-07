@@ -5,6 +5,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 
 import moralis_lib
 import utils
+import config
 
 # TODO: Add logging
 # TODO: Add try and except repeats for requests for moralis
@@ -53,6 +54,7 @@ loop = 0
 while True:
     try:
         #### Check for coins that now meet marketcap
+        utils.send_discord_message("starting token search and filter loop", config.discord_webhook_logs_url)
         loop += 1
         print(f"Loop {loop}")
         print("Getting bonding tokens")
@@ -88,10 +90,12 @@ while True:
  
         # Writing the list to a file
         utils.append_to_file("./data/recommended_tokens.txt", final_filtered_tokens)
-        print("Sleeping for 90 seconds")
-        time.sleep(90)
+        utils.send_discord_message("finished token search and filter loop", config.discord_webhook_logs_url)
+        print(f"Sleeping for {config.sleep_time} seconds")
+        time.sleep(config.sleep_time)
     except Exception as e:
         print(f"Error occurred: {e}, retrying in 30 seconds...")
+        utils.send_discord_message("errored token search and filter loop, trying again in 30 seconds", config.discord_webhook_logs_url)
         time.sleep(30)
 
 

@@ -88,7 +88,7 @@ def list_rug_checked_tokens(df: pd.DataFrame) -> list:
     return rugchecked_tokens
 
 
-def send_discord_message(message_to_send, image_url=None, max_retries=3, timeout=10):
+def send_discord_message(message_to_send, discord_webhook_url=config.discord_webhook_url, image_url=None, max_retries=3, timeout=10):
     """
     Send a message to a Discord channel using a webhook with proper error handling and timeout.
     
@@ -103,7 +103,7 @@ def send_discord_message(message_to_send, image_url=None, max_retries=3, timeout
     """
     # Define the webhook URL
     try:
-        webhook_url = config.discord_webhook_url
+        webhook_url = discord_webhook_url
     except (AttributeError, KeyError):
         print("Error: Discord webhook URL not found in config")
         return False

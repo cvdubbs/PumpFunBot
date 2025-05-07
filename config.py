@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 discord_webhook_url = os.getenv("DISCORD_WEBHOOK_URL")
+discord_webhook_logs_url = os.getenv("DISCORD_WEBHOOK_LOGS_URL")
 
 quicknode_apikey = os.getenv("QUICKNODE_API_KEY")
 
@@ -19,5 +20,6 @@ moralis_bonding_url = f"https://solana-gateway.moralis.io/token/mainnet/exchange
 
 pumpfun_supply = 1000000000
 
+sleep_time = 45
 
 # bitquery_url = "https://streaming.bitquery.io/eap"
