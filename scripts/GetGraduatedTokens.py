@@ -1,8 +1,13 @@
 import os
 import pandas as pd
 import json
-from dotenv import load_dotenv
 
+import sys
+import os
+# Add the parent directory to sys.path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from dotenv import load_dotenv
 import config
 
 # Load environment variables from .env file
@@ -25,7 +30,7 @@ df_add = pd.DataFrame(data['result'])
 list_of_dfs.append(df_add)
 cursorUsed = data['cursor']
 
-for i in range(130,750):
+for i in range(0,750):
     url = f"https://solana-gateway.moralis.io/token/mainnet/exchange/pumpfun/graduated?limit={config.NewTokenCount}&cursor={cursorUsed}"
     response = requests.request("GET", url, headers=headers)
     data = json.loads(response.text)

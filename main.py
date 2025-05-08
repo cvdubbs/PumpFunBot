@@ -8,15 +8,13 @@ import utils
 import config
 
 # TODO: Add logging
-# TODO: Add try and except repeats for requests for moralis
-# TODO: Add Volume amounts to alpha
 # TODO: Min holder amount
 
 ###### Get History from Newest Tokens
 all_tokens_df = None
 while all_tokens_df is None:
     try:
-        all_tokens_df = moralis_lib.get_hist_new_tokens(3)
+        all_tokens_df = moralis_lib.get_hist_new_tokens(6)
     except Exception as e:
         print(f"Error occurred while fetching new tokens: {e}")
         time.sleep(60)
@@ -44,7 +42,7 @@ for tokenAddress in final_filtered_tokens:
         all_tokens_2h_df, 
         tokenAddress, 
         *utils.get_output_info(tokenAddress))
-    utils.send_discord_message(discord_message, logo_url)
+    utils.send_discord_message(discord_message, config.discord_webhook_url, logo_url)
 
 utils.append_to_file("./data/recommended_tokens.txt", final_filtered_tokens)
 
@@ -85,7 +83,7 @@ while True:
                 all_tokens_2h_df, 
                 tokenAddress, 
                 *utils.get_output_info(tokenAddress))
-            utils.send_discord_message(discord_message, logo_url)
+            utils.send_discord_message(discord_message, config.discord_webhook_url, logo_url)
         recommended_tokens.extend(final_filtered_tokens)
  
         # Writing the list to a file
