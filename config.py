@@ -20,6 +20,6 @@ moralis_bonding_url = f"https://solana-gateway.moralis.io/token/mainnet/exchange
 
 pumpfun_supply = 1000000000
 
-sleep_time = 45
+sleep_time = 30
 
 # bitquery_url = "https://streaming.bitquery.io/eap"

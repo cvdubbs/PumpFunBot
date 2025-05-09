@@ -1,34 +1,52 @@
 #!/bin/bash
 
 # Configuration
-PYTHON_SCRIPT="main.py"
-RUN_TIME=3600  # 1 hour in seconds
+PYTHON_SCRIPT_INITAL="initalize.py"
+PYTHON_SCRIPT="repeat.py"
+RUN_TIME=180  # 2 minutes max
 VIRTUAL_ENV_PATH="./venv"  # Replace with your actual virtual env path
 
+echo "Starting initalization script..."
+source "$VIRTUAL_ENV_PATH/bin/activate"
+python "$PYTHON_SCRIPT_INITAL"
+
 # Function to run the script with a time limit
-run_with_timeout() {
+run_loop() {
     # Activate virtual environment
     source "$VIRTUAL_ENV_PATH/bin/activate"
     
     # Start the script in background
     python "$PYTHON_SCRIPT" &
     PID=$!
-    
-    # Wait for specified time
+
     echo "Script started with PID: $PID"
-    echo "Running for $RUN_TIME seconds..."
-    sleep $RUN_TIME
+    echo "Running for up to $RUN_TIME seconds..."
     
-    # Kill the process
-    echo "Time's up! Stopping script..."
-    kill -9 $PID
+    # Monitor the process with timeout
+    SECONDS=0
+    while kill -0 $PID 2>/dev/null; do
+        # Check if we've reached the time limit
+        if [ $SECONDS -ge $RUN_TIME ]; then
+            echo "Time's up! Stopping script..."
+            kill -9 $PID 2>/dev/null
+            break
+        fi
+        sleep 1
+    done
+    
+    # Check if script ended naturally before timeout
+    if [ $SECONDS -lt $RUN_TIME ]; then
+        echo "Script ended naturally after $SECONDS seconds"
+    fi
     
     # Deactivate virtual environment
     deactivate
     
-    echo "Script stopped. Restarting in 5 seconds..."
+    echo "Restarting in 5 seconds..."
     sleep 5
 }
+
+ 
 
 # Main loop to keep restarting the script
 echo "=== Script Runner ==="
@@ -38,5 +56,5 @@ while true; do
     echo "====================================="
     echo "Starting new run at $(date)"
     echo "====================================="
-    run_with_timeout
+    run_loop
 done
