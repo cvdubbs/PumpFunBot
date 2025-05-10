@@ -2,7 +2,7 @@
 
 # Configuration
 PYTHON_SCRIPT="main.py"
-RUN_TIME=1800  # .5 hour in seconds
+RUN_TIME=1200  # .5 hour in seconds
 VIRTUAL_ENV_PATH="./venv"  # Replace with your actual virtual env path
 
 # Function to run the script with a time limit

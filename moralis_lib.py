@@ -608,8 +608,8 @@ def get_main_pair_address(tokenAddress: str):
         
     try:
         # Assuming the main pair is the first one in the result
-        if pairs and 'result' in pairs and len(pairs['result']) > 0:
-            return pairs['result'][0]['pairAddress']
+        if pairs and 'result' in pairs and len(pairs['result']) > 1:
+            return pairs['result'][1]['pairAddress']
         return None
     except (KeyError, IndexError, TypeError) as e:
         print(f"Error extracting main pair address: {str(e)}")
@@ -664,9 +664,14 @@ def get_token_image(tokenAddress: str):
 
 def get_max_mktcap(tokenAddress: str, timeframe: str = "12h"):
   try:
-    pairAddress = get_main_pair_address(tokenAddress)
-    ohlc_data = get_token_ohlc(pairAddress, timeframe)
-    max_mkt_cap = ohlc_data['result'][0]['high'] * 1000000000
+    pairs = get_token_pairs(tokenAddress)
+    max_mkt_cap = 0
+    for pair in range(0,len(pairs['pairs'])):
+        pairAddress = pairs['pairs'][pair]['pairAddress']
+        ohlc_data = get_token_ohlc(pairAddress, timeframe)
+        new_max_mktcap = ohlc_data['result'][0]['high'] * 1000000000
+        if new_max_mktcap > max_mkt_cap:
+            max_mkt_cap = new_max_mktcap
   except Exception as e:
     print(f"Error fetching max market cap: {str(e)} for token {tokenAddress}")
     try:

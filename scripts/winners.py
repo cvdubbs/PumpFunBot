@@ -33,7 +33,7 @@ for i in range(0,len(recommended_tokens)):
         token_name = metadata['name']
         mktcap_clean = int(max_mkt_cap // 1000)
         output_mktcap = format(mktcap_clean, ",")
-        utils.send_discord_message(f"Winner Found: {token_name} - ({recommended_tokens[i]}) \n with market cap of {output_mktcap}k", config.discord_webhook_url)
+        utils.send_discord_message(f":rotating_light: - Winner Found: {token_name} - ({recommended_tokens[i]}) \n with market cap of {output_mktcap}k", config.discord_webhook_url)
 utils.send_discord_message(f":dart: Win Rate: {round(bonded_tokens_count/len(recommended_tokens),2) * 100}% --> {bonded_tokens_count} out of {len(recommended_tokens)} tokens bonded :dart:", config.discord_webhook_url)
 
 

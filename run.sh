@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # Configuration
-PYTHON_SCRIPT_INITAL="initalize.py"
-PYTHON_SCRIPT="repeat.py"
-RUN_TIME=180  # 2 minutes max
+# PYTHON_SCRIPT_INITAL="initalize.py"
+PYTHON_SCRIPT="initalize.py"
+RUN_TIME=360  # 5 minutes max
 VIRTUAL_ENV_PATH="./venv"  # Replace with your actual virtual env path
 
-echo "Starting initalization script..."
-source "$VIRTUAL_ENV_PATH/bin/activate"
-python "$PYTHON_SCRIPT_INITAL"
+# echo "Starting initalization script..."
+# source "$VIRTUAL_ENV_PATH/bin/activate"
+# python "$PYTHON_SCRIPT_INITAL"
 
 # Function to run the script with a time limit
 run_loop() {
@@ -42,8 +42,8 @@ run_loop() {
     # Deactivate virtual environment
     deactivate
     
-    echo "Restarting in 5 seconds..."
-    sleep 5
+    echo "Restarting in 30 seconds..."
+    sleep 30
 }
 
  
