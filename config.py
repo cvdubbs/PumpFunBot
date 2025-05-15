@@ -14,7 +14,7 @@ moralis_headers = {
 
 # Current API Max is 100
 NewTokenCount = 100
-quicknode_url = f"https://proud-proud-theorem.solana-mainnet.quiknode.pro/{quicknode_apikey}/"
+quicknode_url = f"https://divine-morning-choice.solana-mainnet.quiknode.pro/{quicknode_apikey}/"
 moralis_url = f"https://solana-gateway.moralis.io/token/mainnet/exchange/pumpfun/new?limit={NewTokenCount}"
 moralis_bonding_url = f"https://solana-gateway.moralis.io/token/mainnet/exchange/pumpfun/bonding?limit={NewTokenCount}"
 

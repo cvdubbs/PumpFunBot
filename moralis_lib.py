@@ -669,9 +669,10 @@ def get_max_mktcap(tokenAddress: str, timeframe: str = "12h"):
     for pair in range(0,len(pairs['pairs'])):
         pairAddress = pairs['pairs'][pair]['pairAddress']
         ohlc_data = get_token_ohlc(pairAddress, timeframe)
-        new_max_mktcap = ohlc_data['result'][0]['high'] * 1000000000
-        if new_max_mktcap > max_mkt_cap:
-            max_mkt_cap = new_max_mktcap
+        for results in range(0, len(ohlc_data['result'])):
+            new_max_mktcap = ohlc_data['result'][results]['high'] * 1000000000
+            if new_max_mktcap > max_mkt_cap:
+                max_mkt_cap = new_max_mktcap
   except Exception as e:
     print(f"Error fetching max market cap: {str(e)} for token {tokenAddress}")
     try:
@@ -717,4 +718,70 @@ def alpha_vol(tokenAddress: str, timeframe: str = "5m"):
   return net_vol_5min
 
 
-# snipers_own, total_snipers = get_snipers_own("ANrqkQMkaXapaJfrgkZwcmuskozuc8vtHXpaB1t4pump")
+def get_bundlers_own(tokenAddress: str):
+    url = f"https://solana-gateway.moralis.io/token/mainnet/{tokenAddress}/swaps?order=ASC"
+    response = handle_request(url, config.moralis_headers)
+    timestamps = []
+    wallet_addresses = []
+    keys = []
+
+    # Loop through the dictionary
+    for transactionNum in range(0, len(response['result'])):
+        if response['result'][transactionNum]['transactionType'] == 'buy':
+            timestamps.append(response['result'][transactionNum]['blockTimestamp'])
+            wallet_addresses.append(response['result'][transactionNum]['walletAddress'])
+            keys.append(transactionNum)
+
+    # Create the DataFrame
+    clean_data_df = pd.DataFrame({
+        'key': keys,
+        'blockTimestamp': timestamps,
+        'walletAddress': wallet_addresses
+    })
+
+    timestamp_counts = clean_data_df['blockTimestamp'].value_counts()
+    filtered_df = clean_data_df[clean_data_df['blockTimestamp'].isin(timestamp_counts[timestamp_counts > 1].index)]
+
+    bundlers_own = 0
+    for wallet in filtered_df['walletAddress'].unique():
+            try:
+                params = {
+                    "network": "mainnet",
+                    "address": wallet
+                }
+                result = sol_api.account.get_portfolio(
+                    api_key=os.getenv("MORALIS_API_KEY"),
+                    params=params,
+                )
+                
+                for token in result.get('tokens', []):
+                    if token['mint'] == tokenAddress:
+                        bundlers_own += float(token['amount'])/1000000000
+                        break
+            except Exception as e:
+                print(f"Error checking wallet {wallet}: {str(e)}")
+                continue
+    return bundlers_own
+
+    url = f"https://solana-gateway.moralis.io/token/mainnet/{tokenAddress}/swaps?order=ASC"
+    response = handle_request(url, config.moralis_headers)
+    timestamps = []
+    wallet_addresses = []
+    keys = []
+
+    # Loop through the dictionary
+    for transactionNum in range(0, len(response['result'])):
+        if response['result'][transactionNum]['transactionType'] == 'buy':
+            timestamps.append(response['result'][transactionNum]['blockTimestamp'])
+            wallet_addresses.append(response['result'][transactionNum]['walletAddress'])
+            keys.append(transactionNum)
+
+    # Create the DataFrame
+    clean_data_df = pd.DataFrame({
+        'key': keys,
+        'blockTimestamp': timestamps,
+        'walletAddress': wallet_addresses
+    })
+
+    timestamp_counts = clean_data_df['blockTimestamp'].value_counts()
+    filtered_df = clean_data_df[clean_data_df['blockTimestamp'].isin(timestamp_counts[timestamp_counts > 1].index)]

@@ -200,8 +200,6 @@ def get_top_holders_percentage(token_address, quicknode_url=None, timeout=10, ma
 
 
 
-
-
 # if result:
 #     print(f"Token Supply: {result['total_supply']}")
 #     print(f"Top 10 Holders Percentage: {result['top_10_percentage']:.2f}%")

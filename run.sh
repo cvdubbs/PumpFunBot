@@ -2,7 +2,7 @@
 
 # Configuration
 # PYTHON_SCRIPT_INITAL="initalize.py"
-PYTHON_SCRIPT="initalize.py"
+PYTHON_SCRIPT="luna_main.py"
 RUN_TIME=360  # 5 minutes max
 VIRTUAL_ENV_PATH="./venv"  # Replace with your actual virtual env path
 

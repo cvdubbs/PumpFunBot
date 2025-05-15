@@ -210,7 +210,7 @@ def clean_text_strings_for_discord(all_tokens_2h_df: pd.DataFrame, tokenAddress:
     dev_wallet_str = f"- 👤 Dev Wallet: [{dev_wallet}](https://solscan.io/account/{dev_wallet}?activity_type=ACTIVITY_SPL_INIT_MINT#defiactivities) \n"
     trade_links_str = f"[AXI](<https://axiom.trade/meme/{pair_address}>) - [GMGN](https://gmgn.ai/sol/token/{tokenAddress})"
     with open('./data/tracking_calls_mktcap.csv', 'a') as file:
-        file.write(f"{tokenAddress_str}, {round(mkt_cap,0)}, \n")
+        file.write(f"{tokenAddress},{round(mkt_cap,0)}\n")
     return (name_str +  
             symbol_str + 
             tokenAddress_str + 
