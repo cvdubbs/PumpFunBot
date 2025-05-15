@@ -19,30 +19,166 @@ DEFAULT_TIMEOUT = 10
 MAX_RETRIES = 3
 RETRY_DELAY = 2
 
-def get_hist_new_tokens(loops = 50):
-  list_of_dfs = list()
-
-  response = requests.request("GET", config.moralis_url, headers=config.moralis_headers)
-  data = json.loads(response.text)
-  df_add = pd.DataFrame(data['result'])
-  list_of_dfs.append(df_add)
-  cursorUsed = data['cursor']
-
-  for i in range(0,loops):
-      url = f"{config.moralis_url}&cursor={cursorUsed}"
-      response = requests.request("GET", url, headers=config.moralis_headers)
-      data = json.loads(response.text)
-      df_add = pd.DataFrame(data['result'])
-      list_of_dfs.append(df_add)
-      cursorUsed = data['cursor']
-
-  final_df = pd.concat(list_of_dfs)
-  final_df = final_df.drop_duplicates()
-  final_df = final_df[~final_df['tokenAddress'].isna()]
-  final_df.to_csv('./IO_Files/TokensDB.csv', index=False)
-
-  final_df['fullyDilutedValuation'] = final_df['fullyDilutedValuation'].astype('float')
-  return final_df
+def get_hist_new_tokens(loops=50, timeout=15, max_retries=3, retry_delay=3):
+    """
+    Fetch historical token data with proper timeout and error handling.
+    
+    Args:
+        loops (int): Number of pagination loops to perform
+        timeout (int): Request timeout in seconds
+        max_retries (int): Maximum number of retry attempts per request
+        retry_delay (int): Base delay between retries in seconds
+        
+    Returns:
+        pd.DataFrame: DataFrame containing token data
+    """
+    list_of_dfs = []
+    
+    # Function to make API requests with retries
+    def make_request(url, headers, current_timeout=timeout):
+        for attempt in range(max_retries):
+            try:
+                response = requests.request("GET", url, headers=headers, timeout=current_timeout)
+                
+                # Check for rate limiting
+                if response.status_code == 429:
+                    wait_time = retry_delay * (2 ** attempt)  # Exponential backoff
+                    print(f"Rate limited. Waiting {wait_time} seconds before retry...")
+                    time.sleep(wait_time)
+                    continue
+                    
+                # Check for other errors
+                if response.status_code != 200:
+                    print(f"API error: {response.status_code} - {response.text}")
+                    # Only retry on server errors (5xx)
+                    if response.status_code < 500:
+                        return None
+                    
+                    wait_time = retry_delay * (2 ** attempt)
+                    print(f"Server error. Waiting {wait_time} seconds before retry...")
+                    time.sleep(wait_time)
+                    continue
+                    
+                # Parse the response
+                return json.loads(response.text)
+                
+            except Timeout:
+                print(f"Request timed out (attempt {attempt+1}/{max_retries})")
+                if attempt == max_retries - 1:
+                    return None
+                    
+            except ConnectionError as e:
+                print(f"Connection error (attempt {attempt+1}/{max_retries}): {str(e)}")
+                if attempt == max_retries - 1:
+                    return None
+                time.sleep(retry_delay * (2 ** attempt))
+                
+            except json.JSONDecodeError as e:
+                print(f"JSON decode error: {str(e)}")
+                return None
+                
+            except Exception as e:
+                print(f"Unexpected error: {str(e)}")
+                if attempt == max_retries - 1:
+                    return None
+                time.sleep(retry_delay * (2 ** attempt))
+        
+        return None
+    
+    # Initial request
+    try:
+        # Validate config variables
+        if not hasattr(config, 'moralis_url') or not hasattr(config, 'moralis_headers'):
+            print("Error: Missing required config variables")
+            return pd.DataFrame()
+            
+        data = make_request(config.moralis_url, config.moralis_headers)
+        if data is None or 'result' not in data or 'cursor' not in data:
+            print("Error: Invalid response from initial request")
+            return pd.DataFrame()
+            
+        df_add = pd.DataFrame(data['result'])
+        list_of_dfs.append(df_add)
+        cursorUsed = data['cursor']
+        
+        # Process pagination
+        consecutive_errors = 0
+        for i in range(0, loops):
+            # Check if we should stop due to too many consecutive errors
+            if consecutive_errors >= 3:
+                print(f"Stopping after {i} loops due to consecutive errors")
+                break
+                
+            # Construct URL for pagination
+            url = f"{config.moralis_url}&cursor={cursorUsed}"
+            
+            # Make paginated request
+            data = make_request(url, config.moralis_headers)
+            if data is None or 'result' not in data or 'cursor' not in data:
+                print(f"Error in loop {i}: Invalid response")
+                consecutive_errors += 1
+                continue
+                
+            # Reset error counter on success
+            consecutive_errors = 0
+            
+            # Process the data
+            df_add = pd.DataFrame(data['result'])
+            if not df_add.empty:
+                list_of_dfs.append(df_add)
+            else:
+                print(f"Warning: Empty result in loop {i}")
+                
+            # Update cursor for next request
+            cursorUsed = data['cursor']
+            
+            # Add a small delay to avoid overloading the API
+            time.sleep(0.5)
+            
+            # Progress reporting
+            if (i + 1) % 10 == 0:
+                print(f"Completed {i + 1}/{loops} pagination requests")
+        
+        # Process collected data if any
+        if not list_of_dfs:
+            print("No data collected from API")
+            return pd.DataFrame()
+            
+        print(f"Processing {len(list_of_dfs)} data frames")
+        final_df = pd.concat(list_of_dfs)
+        final_df = final_df.drop_duplicates()
+        final_df = final_df[~final_df['tokenAddress'].isna()]
+        
+        # Save to CSV
+        try:
+            final_df.to_csv('./IO_Files/TokensDB.csv', index=False)
+            print(f"Saved {len(final_df)} rows to CSV")
+        except Exception as e:
+            print(f"Error saving to CSV: {str(e)}")
+        
+        # Convert data types
+        try:
+            final_df['fullyDilutedValuation'] = final_df['fullyDilutedValuation'].astype('float')
+        except (ValueError, TypeError) as e:
+            print(f"Error converting fullyDilutedValuation to float: {str(e)}")
+            # Attempt to convert with error handling
+            final_df['fullyDilutedValuation'] = pd.to_numeric(final_df['fullyDilutedValuation'], errors='coerce')
+        
+        return final_df
+        
+    except Exception as e:
+        print(f"Unexpected error in get_hist_new_tokens: {str(e)}")
+        
+        # Return what we've collected so far
+        if list_of_dfs:
+            try:
+                final_df = pd.concat(list_of_dfs)
+                final_df = final_df.drop_duplicates()
+                return final_df
+            except Exception:
+                pass
+                
+        return pd.DataFrame()
 
 def get_bonding_tokens() -> pd.DataFrame:
     max_attempts = 3  # Limit retries to prevent infinite loop
@@ -156,20 +292,6 @@ def get_bonding_tokens() -> pd.DataFrame:
         final_df = pd.concat(list_of_dfs)
         final_df = final_df.drop_duplicates()
         final_df = final_df[~final_df['tokenAddress'].isna()]
-        
-        # Load and merge with previous data
-        try:
-            previos_df = pd.read_csv('./IO_Files/TokensBondingDB.csv')
-            filtered_previous_df = previos_df[~previos_df['tokenAddress'].isin(final_df['tokenAddress'])]
-            data_save = pd.concat([filtered_previous_df, final_df])
-            data_save = data_save.drop_duplicates()
-            data_save.to_csv('./IO_Files/TokensBondingDB.csv', mode='w', index=False)
-        except FileNotFoundError:
-            print("Warning: TokensBondingDB.csv not found, creating new file")
-            final_df.to_csv('./IO_Files/TokensBondingDB.csv', mode='w', index=False)
-        except Exception as e:
-            print(f"Error processing previous data: {str(e)}")
-            # Continue with just the new data
         
         # Convert data types
         try:
@@ -486,8 +608,8 @@ def get_main_pair_address(tokenAddress: str):
         
     try:
         # Assuming the main pair is the first one in the result
-        if pairs and 'result' in pairs and len(pairs['result']) > 0:
-            return pairs['result'][0]['pairAddress']
+        if pairs and 'result' in pairs and len(pairs['result']) > 1:
+            return pairs['result'][1]['pairAddress']
         return None
     except (KeyError, IndexError, TypeError) as e:
         print(f"Error extracting main pair address: {str(e)}")
@@ -542,9 +664,15 @@ def get_token_image(tokenAddress: str):
 
 def get_max_mktcap(tokenAddress: str, timeframe: str = "12h"):
   try:
-    pairAddress = get_main_pair_address(tokenAddress)
-    ohlc_data = get_token_ohlc(pairAddress, timeframe)
-    max_mkt_cap = ohlc_data['result'][0]['high'] * 1000000000
+    pairs = get_token_pairs(tokenAddress)
+    max_mkt_cap = 0
+    for pair in range(0,len(pairs['pairs'])):
+        pairAddress = pairs['pairs'][pair]['pairAddress']
+        ohlc_data = get_token_ohlc(pairAddress, timeframe)
+        for results in range(0, len(ohlc_data['result'])):
+            new_max_mktcap = ohlc_data['result'][results]['high'] * 1000000000
+            if new_max_mktcap > max_mkt_cap:
+                max_mkt_cap = new_max_mktcap
   except Exception as e:
     print(f"Error fetching max market cap: {str(e)} for token {tokenAddress}")
     try:
@@ -590,4 +718,70 @@ def alpha_vol(tokenAddress: str, timeframe: str = "5m"):
   return net_vol_5min
 
 
-# snipers_own, total_snipers = get_snipers_own("ANrqkQMkaXapaJfrgkZwcmuskozuc8vtHXpaB1t4pump")
+def get_bundlers_own(tokenAddress: str):
+    url = f"https://solana-gateway.moralis.io/token/mainnet/{tokenAddress}/swaps?order=ASC"
+    response = handle_request(url, config.moralis_headers)
+    timestamps = []
+    wallet_addresses = []
+    keys = []
+
+    # Loop through the dictionary
+    for transactionNum in range(0, len(response['result'])):
+        if response['result'][transactionNum]['transactionType'] == 'buy':
+            timestamps.append(response['result'][transactionNum]['blockTimestamp'])
+            wallet_addresses.append(response['result'][transactionNum]['walletAddress'])
+            keys.append(transactionNum)
+
+    # Create the DataFrame
+    clean_data_df = pd.DataFrame({
+        'key': keys,
+        'blockTimestamp': timestamps,
+        'walletAddress': wallet_addresses
+    })
+
+    timestamp_counts = clean_data_df['blockTimestamp'].value_counts()
+    filtered_df = clean_data_df[clean_data_df['blockTimestamp'].isin(timestamp_counts[timestamp_counts > 1].index)]
+
+    bundlers_own = 0
+    for wallet in filtered_df['walletAddress'].unique():
+            try:
+                params = {
+                    "network": "mainnet",
+                    "address": wallet
+                }
+                result = sol_api.account.get_portfolio(
+                    api_key=os.getenv("MORALIS_API_KEY"),
+                    params=params,
+                )
+                
+                for token in result.get('tokens', []):
+                    if token['mint'] == tokenAddress:
+                        bundlers_own += float(token['amount'])/1000000000
+                        break
+            except Exception as e:
+                print(f"Error checking wallet {wallet}: {str(e)}")
+                continue
+    return bundlers_own
+
+    url = f"https://solana-gateway.moralis.io/token/mainnet/{tokenAddress}/swaps?order=ASC"
+    response = handle_request(url, config.moralis_headers)
+    timestamps = []
+    wallet_addresses = []
+    keys = []
+
+    # Loop through the dictionary
+    for transactionNum in range(0, len(response['result'])):
+        if response['result'][transactionNum]['transactionType'] == 'buy':
+            timestamps.append(response['result'][transactionNum]['blockTimestamp'])
+            wallet_addresses.append(response['result'][transactionNum]['walletAddress'])
+            keys.append(transactionNum)
+
+    # Create the DataFrame
+    clean_data_df = pd.DataFrame({
+        'key': keys,
+        'blockTimestamp': timestamps,
+        'walletAddress': wallet_addresses
+    })
+
+    timestamp_counts = clean_data_df['blockTimestamp'].value_counts()
+    filtered_df = clean_data_df[clean_data_df['blockTimestamp'].isin(timestamp_counts[timestamp_counts > 1].index)]

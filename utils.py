@@ -88,7 +88,7 @@ def list_rug_checked_tokens(df: pd.DataFrame) -> list:
     return rugchecked_tokens
 
 
-def send_discord_message(message_to_send, image_url=None, max_retries=3, timeout=10):
+def send_discord_message(message_to_send, discord_webhook_url, image_url=None, max_retries=3, timeout=10):
     """
     Send a message to a Discord channel using a webhook with proper error handling and timeout.
     
@@ -103,7 +103,7 @@ def send_discord_message(message_to_send, image_url=None, max_retries=3, timeout
     """
     # Define the webhook URL
     try:
-        webhook_url = config.discord_webhook_url
+        webhook_url = discord_webhook_url
     except (AttributeError, KeyError):
         print("Error: Discord webhook URL not found in config")
         return False
@@ -192,23 +192,30 @@ def get_output_info(tokenAddress: str):
     creation_time = moralis_lib.get_creation_time(tokenAddress)
     age = utils.get_age(creation_time)
     holder_count, transfer_count, airdrop_count = moralis_lib.get_token_holder_counts(tokenAddress)
-    return (mkt_cap, holder_count, airdrop_count, transfer_count, age, dev_wallet)
+    pair_address = moralis_lib.get_main_pair_address(tokenAddress)
+    vol_5m = moralis_lib.alpha_vol(tokenAddress, '5m')
+    vol_1h = moralis_lib.alpha_vol(tokenAddress, '1h')
+    return (mkt_cap, holder_count, airdrop_count, transfer_count, age, dev_wallet, pair_address, vol_5m, vol_1h)
 
 
-def clean_text_strings_for_discord(all_tokens_2h_df: pd.DataFrame, tokenAddress: str, mkt_cap, holder_count, airdrop_count, transfer_count, age, dev_wallet):
+def clean_text_strings_for_discord(all_tokens_2h_df: pd.DataFrame, tokenAddress: str, mkt_cap, holder_count, airdrop_count, transfer_count, age, dev_wallet, pair_address, vol_5m, vol_1h):
     symbol_str = f"{all_tokens_2h_df['symbol'][all_tokens_2h_df['tokenAddress'] == tokenAddress].values[0]} \n"
     name_str = f"# {all_tokens_2h_df['name'][all_tokens_2h_df['tokenAddress'] == tokenAddress].values[0]} \n"
     tokenAddress_str = f"{tokenAddress} \n"
-    mktcap_str = f" \n- 🏷️ MktCap: {round(mkt_cap,0)/1000}k  \n"
+    mktcap_str = f" \n- 🏷️ MktCap: {round(mkt_cap/1000,0)}k  \n"
+    vol_str = f"- 📈 5m Vol: {round(vol_5m/1000,0)}k - 1h Vol: {round(vol_1h/1000,0)}k \n"
     liquidity_str = f"- 💧 Liquidity: {round(float(all_tokens_2h_df['liquidity'][all_tokens_2h_df['tokenAddress'] == tokenAddress].values[0])/1000,0)}k  \n"
     holder_str = f"- 👥 Holder Count: {holder_count} - Airdropped: {airdrop_count} - Transfered: {transfer_count} \n"
     age_str = f"- ⏳ Age: {age} \n"
     dev_wallet_str = f"- 👤 Dev Wallet: [{dev_wallet}](https://solscan.io/account/{dev_wallet}?activity_type=ACTIVITY_SPL_INIT_MINT#defiactivities) \n"
-    trade_links_str = f"[AXI](<https://axiom.trade/meme/{tokenAddress}>) - [GMGN](https://gmgn.ai/sol/token/{tokenAddress})"
+    trade_links_str = f"[AXI](<https://axiom.trade/meme/{pair_address}>) - [GMGN](https://gmgn.ai/sol/token/{tokenAddress})"
+    with open('./data/tracking_calls_mktcap.csv', 'a') as file:
+        file.write(f"{tokenAddress},{round(mkt_cap,0)}\n")
     return (name_str +  
             symbol_str + 
             tokenAddress_str + 
             mktcap_str + 
+            vol_str +
             liquidity_str + 
             holder_str + 
             age_str + 
