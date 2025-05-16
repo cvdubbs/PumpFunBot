@@ -763,25 +763,37 @@ def get_bundlers_own(tokenAddress: str):
                 continue
     return bundlers_own
 
-    url = f"https://solana-gateway.moralis.io/token/mainnet/{tokenAddress}/swaps?order=ASC"
-    response = handle_request(url, config.moralis_headers)
-    timestamps = []
-    wallet_addresses = []
-    keys = []
+tokenAddress = "6V5PcphwPJbPtsSAbs7c7cdt426mNqsehqt7QdUfpump"
+url = f"https://solana-gateway.moralis.io/token/mainnet/{tokenAddress}/swaps?order=ASC"
+response = handle_request(url, config.moralis_headers)
+timestamps = []
+wallet_addresses = []
+keys = []
 
-    # Loop through the dictionary
-    for transactionNum in range(0, len(response['result'])):
-        if response['result'][transactionNum]['transactionType'] == 'buy':
-            timestamps.append(response['result'][transactionNum]['blockTimestamp'])
-            wallet_addresses.append(response['result'][transactionNum]['walletAddress'])
-            keys.append(transactionNum)
+# Loop through the dictionary
+for transactionNum in range(0, len(response['result'])):
+    if response['result'][transactionNum]['transactionType'] == 'buy':
+        timestamps.append(response['result'][transactionNum]['blockTimestamp'])
+        wallet_addresses.append(response['result'][transactionNum]['walletAddress'])
+        keys.append(transactionNum)
 
-    # Create the DataFrame
-    clean_data_df = pd.DataFrame({
-        'key': keys,
-        'blockTimestamp': timestamps,
-        'walletAddress': wallet_addresses
-    })
+# Create the DataFrame
+clean_data_df = pd.DataFrame({
+    'key': keys,
+    'blockTimestamp': timestamps,
+    'walletAddress': wallet_addresses
+})
 
-    timestamp_counts = clean_data_df['blockTimestamp'].value_counts()
-    filtered_df = clean_data_df[clean_data_df['blockTimestamp'].isin(timestamp_counts[timestamp_counts > 1].index)]
+timestamp_counts = clean_data_df['blockTimestamp'].value_counts()
+filtered_df = clean_data_df[clean_data_df['blockTimestamp'].isin(timestamp_counts[timestamp_counts > 1].index)]
+
+import time
+
+# Timing a single line of code
+start_time = time.time()
+test = get_bundlers_own("UsEnWc2LMKKhANB4vvJVd9ez3yprwnsU6CmD4Aypump")
+end_time = time.time()
+execution_time = end_time - start_time
+print(f"Execution time: {execution_time:.6f} seconds")
+print(test)
+

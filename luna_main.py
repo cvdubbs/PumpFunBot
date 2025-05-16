@@ -42,6 +42,7 @@ mid_final_filtered_tokens = [token for token in filtered_tokens_by_bonding if mo
 final_filtered_tokens = [token for token in mid_final_filtered_tokens if moralis_lib.alpha_pos(token, '1h') >= 0]
 final_filtered_tokens = [token for token in final_filtered_tokens if moralis_lib.alpha_vol(token, '1h') >= 25000]
 final_filtered_tokens = [token for token in final_filtered_tokens if moralis_lib.alpha_vol(token, '5m') >= 4000]
+final_filtered_tokens = [token for token in final_filtered_tokens if moralis_lib.get_bundlers_own(token) <= 0.05]
 # Can add total volume here too using alpha_pos
 print(final_filtered_tokens)
 
