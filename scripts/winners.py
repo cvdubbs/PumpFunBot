@@ -19,6 +19,18 @@ load_calls = pd.read_csv("./data/tracking_calls_mktcap.csv", header=None, names=
 load_calls['tokenAddress'] = load_calls['tokenAddress'] 
 load_calls['tokenAddress'] = load_calls['tokenAddress'].str.replace(r'\s+', '', regex=True)
 
+tokenAddyStart = input("Enter the tokenAddress to start with: ")
+target_index = load_calls[load_calls['tokenAddress'] == tokenAddyStart].index
+
+if len(target_index) > 0:
+    # Get the first occurrence if there are multiple matches
+    first_occurrence = target_index[0]
+    
+    # Create a new DataFrame with rows including and after the target row
+    load_calls = load_calls.iloc[first_occurrence:]
+else:
+    print("No row found with the specified tokenAddress")
+
 load_calls['max_mktcap'] = load_calls['tokenAddress'].apply(lambda address: moralis_lib.get_max_mktcap(address, '1d'))
 load_calls['multipler'] = load_calls['max_mktcap'] / load_calls['mktcap']
 
