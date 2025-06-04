@@ -6,6 +6,7 @@ discord_webhook_url = os.getenv("DISCORD_WEBHOOK_URL")
 discord_webhook_logs_url = os.getenv("DISCORD_WEBHOOK_LOGS_URL")
 
 quicknode_apikey = os.getenv("QUICKNODE_API_KEY")
+helius_apikey = os.getenv("HELIUS_API_KEY")
 
 moralis_headers = {
   "Accept": "application/json",
@@ -17,6 +18,7 @@ NewTokenCount = 100
 quicknode_url = f"https://divine-morning-choice.solana-mainnet.quiknode.pro/{quicknode_apikey}/"
 moralis_url = f"https://solana-gateway.moralis.io/token/mainnet/exchange/pumpfun/new?limit={NewTokenCount}"
 moralis_bonding_url = f"https://solana-gateway.moralis.io/token/mainnet/exchange/pumpfun/bonding?limit={NewTokenCount}"
+helius_url = f"https://mainnet.helius-rpc.com/?api-key={helius_apikey}"
 
 pumpfun_supply = 1000000000
 

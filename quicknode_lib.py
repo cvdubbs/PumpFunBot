@@ -191,6 +191,37 @@ def get_top_holders_percentage(token_address, quicknode_url=None, timeout=10, ma
     }
 
 
+# def get_launchcoin_creations(quicknode_url, timeout=10, max_retries=3):
+#     """Get the list of LaunchCoin creations with proper error handling and timeouts"""
+#     headers = {"Content-Type": "application/json"}
+
+#     payload = {"jsonrpc": "2.0",
+#         "id": 1,
+#         "method": "getAssetsByCreator",
+#         "params": {
+#             "creatorAddress": "5qWya6UjwWnGVhdSBL3hyZ7B45jbk6Byt1hwd7ohEGXE",
+#             "page": 1,
+#             "limit": 10,  # Adjust based on expected number of tokens
+#             "displayOptions": {
+#                 "showFungible": True
+#             }
+#         }
+#     }
+#     response = make_api_request(quicknode_url, payload, headers, max_retries, timeout)
+    
+#     # Check if the response contains an error
+#     if isinstance(response, dict) and "error" in response:
+#         print(f"Error in get_launchcoin_creations: {response['error']}")
+#         return []
+    
+#     # Extract the result data
+#     try:
+#         return response.get('result', {}).get('value', [])
+#     except (AttributeError, TypeError) as e:
+#         print(f"Error extracting LaunchCoin creations data: {str(e)}")
+    
+#     return []
+
 # # Your PumpFun token address
 # token_address = "AJ37uM1qDN1MdWukKZ6Pg8yb5A8WoCzbVVYz4cdmpump"
 
