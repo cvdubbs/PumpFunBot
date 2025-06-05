@@ -3,13 +3,29 @@ from datetime import datetime, timedelta
 from dateutil import parser
 import requests
 import time
+import math
 from requests.exceptions import Timeout, ConnectionError, RequestException
 import pytz
 import pandas as pd
 import moralis_lib
 import quicknode_lib
+import syrax_api
 import config
 import utils
+
+
+def get_total_mins(timestamp_str):
+    # Parse the input timestamp
+    target_time = parser.parse(timestamp_str)
+    
+    # Get current time in UTC
+    current_time = datetime.now(pytz.UTC)
+    
+    # Calculate the time difference
+    time_difference = abs(current_time - target_time)
+    total_seconds = time_difference.total_seconds()
+    total_minutes = math.ceil(total_seconds / 60)
+    return total_minutes
 
 
 def calculate_time_difference(timestamp_str):
@@ -72,13 +88,20 @@ def list_rug_checked_tokens(df: pd.DataFrame) -> list:
             continue
         if dev_percent_owned is None:
             continue
-        if dev_percent_owned > 0.005:
+        if dev_percent_owned > 0.05:
             append_to_file("./data/reject_why.txt", [f"{tokenAddress} - dev owns {dev_percent_owned}%"])
             continue
         topholders_result = quicknode_lib.get_top_holders_percentage(tokenAddress)
         top_10_own_float = topholders_result['top_10_percentage']
         if top_10_own_float > 33.00:
             append_to_file("./data/reject_why.txt", [f"{tokenAddress} - top 10 own {top_10_own_float}%"])
+            continue
+        try:
+            bundledsol, bundledpercent = syrax_api.get_bundles(tokenAddress)
+        except:
+            print(f"Error getting Syrax bundles for token {tokenAddress}")
+        if bundledsol > 0.0 and bundledpercent >= 0.01:
+            append_to_file("./data/reject_why.txt", [f"{tokenAddress} - bundled sol {bundledsol} - bundled percent {bundledpercent}"])
             continue
         # sniper_own, total_snipers = moralis_lib.get_snipers_own(tokenAddress)
         # if sniper_own > 30:
@@ -195,15 +218,17 @@ def get_output_info(tokenAddress: str):
     pair_address = moralis_lib.get_main_pair_address(tokenAddress)
     vol_5m = moralis_lib.alpha_vol(tokenAddress, '5m')
     vol_1h = moralis_lib.alpha_vol(tokenAddress, '1h')
-    return (mkt_cap, holder_count, airdrop_count, transfer_count, age, dev_wallet, pair_address, vol_5m, vol_1h)
+    minute_age = utils.get_total_mins(creation_time)
+    return (mkt_cap, holder_count, airdrop_count, transfer_count, age, dev_wallet, pair_address, vol_5m, vol_1h, minute_age)
 
 
-def clean_text_strings_for_discord(all_tokens_2h_df: pd.DataFrame, tokenAddress: str, mkt_cap, holder_count, airdrop_count, transfer_count, age, dev_wallet, pair_address, vol_5m, vol_1h):
+def clean_text_strings_for_discord(all_tokens_2h_df: pd.DataFrame, tokenAddress: str, mkt_cap, holder_count, airdrop_count, transfer_count, age, dev_wallet, pair_address, vol_5m, vol_1h, minute_age):
     symbol_str = f"{all_tokens_2h_df['symbol'][all_tokens_2h_df['tokenAddress'] == tokenAddress].values[0]} \n"
     name_str = f"# {all_tokens_2h_df['name'][all_tokens_2h_df['tokenAddress'] == tokenAddress].values[0]} \n"
     tokenAddress_str = f"{tokenAddress} \n"
     mktcap_str = f" \n- 🏷️ MktCap: {round(mkt_cap/1000,0)}k  \n"
     vol_str = f"- 📈 5m Vol: {round(vol_5m/1000,0)}k - 1h Vol: {round(vol_1h/1000,0)}k \n"
+    vol_age_str = f"- ⏱️ Vol Per Min: {round((vol_1h/minute_age)/1000,0)}k \n"
     liquidity_str = f"- 💧 Liquidity: {round(float(all_tokens_2h_df['liquidity'][all_tokens_2h_df['tokenAddress'] == tokenAddress].values[0])/1000,0)}k  \n"
     holder_str = f"- 👥 Holder Count: {holder_count} - Airdropped: {airdrop_count} - Transfered: {transfer_count} \n"
     age_str = f"- ⏳ Age: {age} \n"
@@ -216,6 +241,7 @@ def clean_text_strings_for_discord(all_tokens_2h_df: pd.DataFrame, tokenAddress:
             tokenAddress_str + 
             mktcap_str + 
             vol_str +
+            vol_age_str +
             liquidity_str + 
             holder_str + 
             age_str + 
