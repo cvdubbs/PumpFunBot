@@ -97,11 +97,12 @@ def list_rug_checked_tokens(df: pd.DataFrame) -> list:
             append_to_file("./data/reject_why.txt", [f"{tokenAddress} - top 10 own {top_10_own_float}%"])
             continue
         try:
-            bundledsol, bundledpercent = syrax_api.get_bundles(tokenAddress)
+            bundle_wallets_list = syrax_api.get_bundle_wallets(tokenAddress)
+            bundledpercent =  moralis_lib.bundler_still_owns(tokenAddress, bundle_wallets_list)
         except:
             print(f"Error getting Syrax bundles for token {tokenAddress}")
-        if bundledsol > 0.0 and bundledpercent >= 0.01:
-            append_to_file("./data/reject_why.txt", [f"{tokenAddress} - bundled sol {bundledsol} - bundled percent {bundledpercent}"])
+        if bundledpercent >= 0.1:
+            append_to_file("./data/reject_why.txt", [f"{tokenAddress} - bundled percent still held {bundledpercent}"])
             continue
         # sniper_own, total_snipers = moralis_lib.get_snipers_own(tokenAddress)
         # if sniper_own > 30:
@@ -228,7 +229,7 @@ def clean_text_strings_for_discord(all_tokens_2h_df: pd.DataFrame, tokenAddress:
     tokenAddress_str = f"{tokenAddress} \n"
     mktcap_str = f" \n- 🏷️ MktCap: {round(mkt_cap/1000,0)}k  \n"
     vol_str = f"- 📈 5m Vol: {round(vol_5m/1000,0)}k - 1h Vol: {round(vol_1h/1000,0)}k \n"
-    vol_age_str = f"- ⏱️ Vol Per Min: {round((vol_1h/minute_age)/1000,0)}k \n"
+    vol_age_str = f"- ⏱️ Vol Per Min: {round((vol_1h/minute_age)/1000,1)}k \n"
     liquidity_str = f"- 💧 Liquidity: {round(float(all_tokens_2h_df['liquidity'][all_tokens_2h_df['tokenAddress'] == tokenAddress].values[0])/1000,0)}k  \n"
     holder_str = f"- 👥 Holder Count: {holder_count} - Airdropped: {airdrop_count} - Transfered: {transfer_count} \n"
     age_str = f"- ⏳ Age: {age} \n"
